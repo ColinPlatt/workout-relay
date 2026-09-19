@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14372d">
+  <meta name="description" content="Send structured running plans to Garmin Connect.">
+  <title>Workout Relay</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Workout Relay">
+      <span class="brand-icon" aria-hidden="true">WR</span>
+      <span>Workout Relay</span>
+    </a>
+    <div class="header-actions">
+      <label class="language-label" for="language" data-i18n="languageLabel">Language</label>
+      <select id="language" aria-label="Language">
+        <option value="en">English</option>
+        <option value="fr">Français</option>
+      </select>
+      <button id="logout" class="button ghost hidden" type="button" data-i18n="logout">Log out</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="auth-view" class="auth-view">
+      <div class="hero">
+        <p class="eyebrow" data-i18n="heroEyebrow">Your plan. Your calendar.</p>
+        <h1 data-i18n="heroTitle">Structured workouts, sent from your phone.</h1>
+        <p class="hero-copy" data-i18n="heroCopy">Upload a carefully validated JSON plan or connect your training assistant, then send every session to Garmin Connect.</p>
+        <div class="trust-line">
+          <span aria-hidden="true">●</span>
+          <p data-i18n="trustLine">Garmin passwords and MFA codes are never stored. Encrypted session tokens keep you connected.</p>
+        </div>
+      </div>
+
+      <section class="card auth-card" aria-labelledby="auth-heading">
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-auth-mode="login" type="button" data-i18n="login">Log in</button>
+          <button class="tab" data-auth-mode="register" type="button" data-i18n="createAccount">Create account</button>
+        </div>
+        <h2 id="auth-heading" class="sr-only" data-i18n="accountAccess">Account access</h2>
+        <form id="auth-form">
+          <label><span data-i18n="email">Email</span><input id="account-email" type="email" autocomplete="email" required></label>
+          <label><span data-i18n="password">Password</span><input id="account-password" type="password" minlength="12" autocomplete="current-password" required></label>
+          <p class="hint" data-i18n="passwordHint">Use at least 12 characters. This is your Workout Relay password.</p>
+          <button id="auth-submit" class="button primary wide" type="submit" data-i18n="login">Log in</button>
+          <p id="auth-error" class="form-message error" role="alert"></p>
+        </form>
+      </section>
+    </section>
+
+    <section id="dashboard" class="dashboard hidden">
+      <div class="dashboard-title">
+        <div>
+          <p class="eyebrow" data-i18n="dashboard">Dashboard</p>
+          <h1 data-i18n="dashboardTitle">Plan the work. Send it once.</h1>
+          <p id="account-label" class="muted"></p>
+        </div>
+        <button id="garmin-card" class="connection-card" type="button">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span><strong data-i18n="checkingGarmin">Checking Garmin…</strong><small data-i18n="tapToManage">Tap to manage</small></span>
+          <span aria-hidden="true">›</span>
+        </button>
+      </div>
+
+      <nav class="section-tabs" aria-label="Dashboard sections">
+        <button class="section-tab active" data-section="upload" type="button" data-i18n="upload">Upload</button>
+        <button class="section-tab" data-section="guide" type="button" data-i18n="formatGuide">Plan format</button>
+        <button class="section-tab" data-section="automation" type="button" data-i18n="automation">Automation</button>
+        <button class="section-tab" data-section="settings" type="button" data-i18n="settings">Settings</button>
+      </nav>
+
+      <section id="section-upload" class="dashboard-section">
+        <div class="card editor-card">
+          <div class="card-heading">
+            <div><p class="step">01</p><h2 data-i18n="addPlan">Add a workout plan</h2></div>
+            <label class="file-picker"><span data-i18n="chooseJson">Choose JSON</span><input id="plan-file" type="file" accept="application/json,.json"></label>
+          </div>
+          <p class="muted compact-copy" data-i18n="addPlanHelp">Paste a plan or select a JSON file. Validate it before sending anything to Garmin.</p>
+          <textarea id="plan-json" spellcheck="false" aria-label="Plan JSON" data-i18n-aria="planJson" data-i18n-placeholder="jsonPlaceholder"></textarea>
+          <div class="editor-actions">
+            <button id="load-example" class="button ghost-border" type="button" data-i18n="loadExample">Load example</button>
+            <span class="action-spacer"></span>
+            <button id="validate-plan" class="button secondary" type="button" data-i18n="validate">Validate</button>
+            <button id="upload-plan" class="button primary" type="button" data-i18n="sendToGarmin">Send to Garmin</button>
+          </div>
+          <div id="plan-result" class="result hidden" aria-live="polite"></div>
+        </div>
+
+        <div class="card history-card">
+          <div class="card-heading"><div><p class="step" data-i18n="recent">Recent</p><h2 data-i18n="planHistory">Plan history</h2></div><button id="refresh-history" class="icon-button" type="button" aria-label="Refresh" data-i18n-aria="refresh">↻</button></div>
+          <div id="history-list" class="history-list"><p class="muted" data-i18n="noPlans">No plans submitted yet.</p></div>
+        </div>
+      </section>
+
+      <section id="section-guide" class="dashboard-section hidden">
+        <div class="guide-grid">
+          <article class="card guide-intro">
+            <p class="step">JSON v1</p>
+            <h2 data-i18n="guideTitle">A predictable format for reliable workouts</h2>
+            <p class="muted" data-i18n="guideIntro">Workout Relay does not ask an AI to interpret your plan at upload time. Every duration, target, repeat, and date is explicit, validated, and deterministic.</p>
+            <div class="guide-actions">
+              <button id="copy-instructions" class="button primary" type="button" data-i18n="copyAiInstructions">Copy AI instructions</button>
+              <a class="button secondary" href="/api/v1/plan-schema" target="_blank" data-i18n="viewSchema">View JSON Schema</a>
+            </div>
+          </article>
+
+          <article class="card guide-card">
+            <h3 data-i18n="requiredStructure">Required structure</h3>
+            <pre><code>{
+  "schema_version": 1,
+  "plan_id": "2026-W40-5k",
+  "title": "5K development week",
+  "workouts": [ ... ]
+}</code></pre>
+            <p data-i18n="structureHelp">A plan contains one or more dated running workouts. Unknown fields are rejected so mistakes are visible.</p>
+          </article>
+
+          <article class="card guide-card">
+            <h3 data-i18n="durations">Durations</h3>
+            <pre><code>{ "type": "time", "value": 600 }
+{ "type": "distance", "value": 1000 }</code></pre>
+            <p data-i18n="durationHelp">Time is always seconds. Distance is always metres. Values must be positive whole numbers.</p>
+          </article>
+
+          <article class="card guide-card">
+            <h3 data-i18n="targets">Targets</h3>
+            <pre><code>{ "type": "no_target" }
+{ "type": "heart_rate", "low": 135, "high": 150 }
+{ "type": "pace", "slow": "5:30", "fast": "5:10" }</code></pre>
+            <p data-i18n="targetHelp">Use one target per step. Pace is minutes per kilometre; slow must genuinely be slower than fast.</p>
+          </article>
+
+          <article class="card guide-card">
+            <h3 data-i18n="repeats">Repeats</h3>
+            <pre><code>{
+  "type": "repeat",
+  "count": 6,
+  "steps": [ ... ]
+}</code></pre>
+            <p data-i18n="repeatHelp">A repeat contains 1–5 simple steps. Repeats cannot be nested, and the expanded workout cannot exceed 50 steps.</p>
+          </article>
+
+          <article class="card guide-card guide-wide">
+            <h3 data-i18n="rulesChecklist">Reliability checklist</h3>
+            <ul class="checklist">
+              <li data-i18n="ruleDate">Workout IDs start with the same YYYY-MM-DD value as their date.</li>
+              <li data-i18n="ruleUnique">Every workout ID is unique within the plan.</li>
+              <li data-i18n="ruleTitle">Garmin workout titles contain at most 50 characters.</li>
+              <li data-i18n="ruleValidate">Call the validation endpoint before submitting an automatically generated plan.</li>
+              <li data-i18n="ruleNoMarkdown">Send raw JSON—not Markdown code fences or explanatory text.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section id="section-automation" class="dashboard-section hidden">
+        <div class="automation-grid">
+          <article class="card automation-card">
+            <p class="step">API</p>
+            <h2 data-i18n="assistantAccess">Assistant access</h2>
+            <p class="muted" data-i18n="assistantHelp">Create a revocable bearer key for ChatGPT, Claude, or your own automation. The full key is displayed only once.</p>
+            <div class="inline-form">
+              <input id="key-name" maxlength="80" data-i18n-placeholder="keyNamePlaceholder" aria-label="API key name" data-i18n-aria="apiKeyName">
+              <button id="create-key" class="button primary" type="button" data-i18n="createKey">Create key</button>
+            </div>
+            <div id="key-result" class="secret-result hidden"></div>
+            <div id="key-list" class="key-list"></div>
+          </article>
+          <article class="card automation-card">
+            <p class="step">HTTP</p>
+            <h2 data-i18n="apiWorkflow">Recommended API workflow</h2>
+            <ol class="workflow">
+              <li data-i18n="apiStep1">Fetch the format instructions and JSON Schema.</li>
+              <li data-i18n="apiStep2">Generate a plan as raw JSON.</li>
+              <li data-i18n="apiStep3">POST it to /api/v1/plans/validate.</li>
+              <li data-i18n="apiStep4">Fix every structured validation error.</li>
+              <li data-i18n="apiStep5">POST the valid plan to /api/v1/plans.</li>
+            </ol>
+            <a href="/docs" target="_blank" class="text-link" data-i18n="openApiDocs">Open interactive API documentation ↗</a>
+          </article>
+        </div>
+      </section>
+
+      <section id="section-settings" class="dashboard-section hidden">
+        <div class="settings-grid">
+          <article class="card automation-card">
+            <p class="step" data-i18n="security">Security</p>
+            <h2 data-i18n="changePassword">Change password</h2>
+            <form id="password-form">
+              <label><span data-i18n="currentPassword">Current password</span><input id="current-password" type="password" autocomplete="current-password" required></label>
+              <label><span data-i18n="newPassword">New password</span><input id="new-password" type="password" minlength="12" autocomplete="new-password" required></label>
+              <button class="button primary" type="submit" data-i18n="savePassword">Save new password</button>
+              <p id="password-error" class="form-message error" role="alert"></p>
+            </form>
+          </article>
+          <article class="card automation-card danger-zone">
+            <p class="step" data-i18n="dangerZone">Danger zone</p>
+            <h2 data-i18n="deleteAccount">Delete account</h2>
+            <p class="muted" data-i18n="deleteAccountHelp">Permanently delete your account, plans, API keys, and encrypted Garmin tokens.</p>
+            <form id="delete-account-form">
+              <label><span data-i18n="confirmPassword">Confirm your password</span><input id="delete-password" type="password" autocomplete="current-password" required></label>
+              <button class="button danger" type="submit" data-i18n="deleteEverything">Delete everything</button>
+              <p id="delete-error" class="form-message error" role="alert"></p>
+            </form>
+          </article>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="garmin-dialog">
+    <div class="dialog-heading"><div><p class="step">Garmin Connect</p><h2 data-i18n="connectGarmin">Connect Garmin</h2></div><button id="close-garmin" class="icon-button" type="button" aria-label="Close" data-i18n-aria="close">×</button></div>
+    <div id="garmin-connected" class="hidden">
+      <div class="connected-badge"><span>✓</span><div><strong data-i18n="garminConnected">Garmin connected</strong><small id="garmin-name"></small></div></div>
+      <p class="muted" data-i18n="connectedHelp">Encrypted Garmin session tokens are stored so you do not need to sign in for every upload.</p>
+      <button id="disconnect-garmin" class="button danger wide" type="button" data-i18n="disconnectGarmin">Disconnect and delete tokens</button>
+    </div>
+    <form id="garmin-login-form">
+      <div class="notice warning"><strong data-i18n="beforeConnecting">Before connecting</strong><p data-i18n="garminDisclosure">This uses an unofficial Garmin integration. Your credentials pass through Workout Relay once and are not stored. Encrypted session tokens provide ongoing account access.</p></div>
+      <label><span data-i18n="garminEmail">Garmin email</span><input id="garmin-email" type="email" autocomplete="username" required></label>
+      <label><span data-i18n="garminPassword">Garmin password</span><input id="garmin-password" type="password" autocomplete="current-password" required></label>
+      <label class="consent"><input id="garmin-consent" type="checkbox" required><span data-i18n="garminConsent">I understand this is unofficial and encrypted session tokens will be stored.</span></label>
+      <button class="button primary wide" type="submit" data-i18n="connectSecurely">Connect securely</button>
+      <p id="garmin-login-error" class="form-message error" role="alert"></p>
+    </form>
+    <form id="garmin-mfa-form" class="hidden">
+      <p data-i18n="mfaHelp">Enter the verification code Garmin sent you. This attempt expires after five minutes.</p>
+      <label><span data-i18n="verificationCode">Verification code</span><input id="garmin-mfa" inputmode="numeric" autocomplete="one-time-code" required></label>
+      <button class="button primary wide" type="submit" data-i18n="verify">Verify</button>
+      <p id="garmin-mfa-error" class="form-message error" role="alert"></p>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+  <footer><span>Workout Relay</span><span data-i18n="disclaimer">Independent software. Not affiliated with Garmin.</span></footer>
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

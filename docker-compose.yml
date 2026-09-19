@@ -1,0 +1,17 @@
+services:
+  web:
+    build: .
+    environment:
+      APP_ENV: development
+      BASE_URL: http://localhost:8000
+      DATABASE_URL: sqlite:////data/workout_relay.db
+      COOKIE_SECURE: "false"
+      GARMIN_MODE: mock
+    ports:
+      - "8000:8000"
+    volumes:
+      - workout-relay-data:/data
+    restart: unless-stopped
+
+volumes:
+  workout-relay-data:

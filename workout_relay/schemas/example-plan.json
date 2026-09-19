@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "plan_id": "2026-W40-5k",
+  "title": "5K development week",
+  "description": "One interval session and one easy aerobic run.",
+  "workouts": [
+    {
+      "id": "2026-10-01_intervals",
+      "date": "2026-10-01",
+      "sport": "running",
+      "title": "6 x 400 m",
+      "description": "Controlled repetitions with 90 seconds recovery.",
+      "estimated_duration_sec": 3000,
+      "steps": [
+        {
+          "type": "warmup",
+          "name": "Warm-up",
+          "duration": { "type": "time", "value": 900 },
+          "target": { "type": "no_target" }
+        },
+        {
+          "type": "repeat",
+          "name": "400 m repetitions",
+          "count": 6,
+          "steps": [
+            {
+              "type": "interval",
+              "name": "Fast",
+              "duration": { "type": "distance", "value": 400 },
+              "target": { "type": "pace", "slow": "4:30", "fast": "4:15" }
+            },
+            {
+              "type": "recovery",
+              "name": "Easy recovery",
+              "duration": { "type": "time", "value": 90 },
+              "target": { "type": "no_target" }
+            }
+          ]
+        },
+        {
+          "type": "cooldown",
+          "name": "Cool-down",
+          "duration": { "type": "time", "value": 600 },
+          "target": { "type": "no_target" }
+        }
+      ]
+    },
+    {
+      "id": "2026-10-04_easy",
+      "date": "2026-10-04",
+      "sport": "running",
+      "title": "Easy aerobic run",
+      "steps": [
+        {
+          "type": "interval",
+          "name": "Easy",
+          "duration": { "type": "time", "value": 2700 },
+          "target": { "type": "heart_rate", "low": 135, "high": 150 }
+        }
+      ]
+    }
+  ]
+}
