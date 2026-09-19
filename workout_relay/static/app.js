@@ -15,7 +15,7 @@ const translations = {
     validate: "Validate", sendToGarmin: "Send to Garmin", recent: "Recent", planHistory: "Plan history",
     noPlans: "No plans submitted yet.", guideTitle: "A predictable format for reliable workouts",
     guideIntro: "Workout Relay does not ask an AI to interpret your plan at upload time. Every duration, target, repeat, and date is explicit, validated, and deterministic.",
-    copyAiInstructions: "Copy AI instructions", viewSchema: "View JSON Schema", requiredStructure: "Required structure",
+    copyAiInstructions: "Copy AI instructions", viewExample: "View complete example", viewSchema: "View JSON Schema", requiredStructure: "Required structure",
     structureHelp: "A plan contains one or more dated running workouts. Unknown fields are rejected so mistakes are visible.",
     durations: "Durations", durationHelp: "Time is always seconds. Distance is always metres. Values must be positive whole numbers.",
     targets: "Targets", targetHelp: "Use one target per step. Pace is minutes per kilometre; slow must genuinely be slower than fast.",
@@ -24,15 +24,17 @@ const translations = {
     ruleUnique: "Every workout ID is unique within the plan.", ruleTitle: "Garmin workout titles contain at most 50 characters.",
     ruleValidate: "Call the validation endpoint before submitting an automatically generated plan.",
     ruleNoMarkdown: "Send raw JSON—not Markdown code fences or explanatory text.", assistantAccess: "Assistant access",
-    assistantHelp: "Create a revocable bearer key for ChatGPT, Claude, or your own automation. The full key is displayed only once.",
+    assistantHelp: "Create a revocable bearer key for ChatGPT, Claude, or your own automation. Add it only to the assistant's protected API-auth settings—never an ordinary chat. The full key is displayed once.",
     keyNamePlaceholder: "My training assistant", createKey: "Create key", apiWorkflow: "Recommended API workflow",
     apiStep1: "Fetch the format instructions and JSON Schema.", apiStep2: "Generate a plan as raw JSON.",
     apiStep3: "POST it to /api/v1/plans/validate.", apiStep4: "Fix every structured validation error.",
     apiStep5: "POST the valid plan to /api/v1/plans.", openApiDocs: "Open interactive API documentation ↗",
+    apiStep6: "Poll the returned submission URL until it is completed or failed.",
     connectGarmin: "Connect Garmin", garminConnected: "Garmin connected",
     connectedHelp: "Encrypted Garmin session tokens are stored so you do not need to sign in for every upload.",
     disconnectGarmin: "Disconnect and delete tokens", beforeConnecting: "Before connecting",
     garminDisclosure: "This uses an unofficial Garmin integration. Your credentials pass through Workout Relay once and are not stored. Encrypted session tokens provide ongoing account access.",
+    garminTrustBoundary: "Because the operator controls the hosted server, use this service only if you trust its operator. Encryption protects stored data, but cannot protect against malicious server code.",
     garminEmail: "Garmin email", garminPassword: "Garmin password",
     garminConsent: "I understand this is unofficial and encrypted session tokens will be stored.",
     connectSecurely: "Connect securely", mfaHelp: "Enter the verification code Garmin sent you. This attempt expires after five minutes.",
@@ -45,11 +47,14 @@ const translations = {
     garminNotConnected: "Garmin not connected", garminNeedsLogin: "Garmin needs reconnection", mockConnection: "Development mode",
     connectedAs: "Connected as {name}", validPlan: "Valid plan: {count} workout(s).", planCompleted: "Plan sent: {created} created, {updated} updated, {skipped} unchanged.",
     planQueued: "Plan queued. You can leave this page while Workout Relay sends it.",
+    stillProcessing: "Still sending to Garmin. Check Plan history in a few minutes.",
+    jsonCleaned: "Removed text around the JSON.", copyFailed: "Copy failed. Select the text and copy it manually.",
     invalidJson: "The text is not valid JSON: {detail}", validationFailed: "The plan needs correction:",
     apiKeyOnce: "Copy this key now. It will not be shown again:", revoke: "Revoke", keyCreated: "API key created.",
     copied: "Copied to clipboard.", disconnected: "Garmin tokens deleted.", connected: "Garmin connected.",
     mfaRequired: "Garmin verification is required.", exampleLoaded: "Example loaded.", working: "Working…",
     status_completed: "Completed", status_failed: "Failed", status_processing: "Processing", status_queued: "Queued",
+    historyCounts: "{created} created · {updated} updated · {skipped} unchanged",
     confirmDisconnect: "Disconnect Garmin and permanently delete the stored session tokens?",
     error_authentication_required: "Please log in.", error_invalid_credentials: "Incorrect email or password.",
     error_email_exists: "An account with this email already exists.", error_csrf_failed: "Your session expired. Reload and try again.",
@@ -88,7 +93,7 @@ const translations = {
     validate: "Valider", sendToGarmin: "Envoyer vers Garmin", recent: "Récent", planHistory: "Historique des plans",
     noPlans: "Aucun plan envoyé pour le moment.", guideTitle: "Un format prévisible pour des séances fiables",
     guideIntro: "Workout Relay ne demande pas à une IA d'interpréter votre plan lors de l'import. Chaque durée, cible, répétition et date est explicite, validée et déterministe.",
-    copyAiInstructions: "Copier les instructions IA", viewSchema: "Voir le schéma JSON", requiredStructure: "Structure obligatoire",
+    copyAiInstructions: "Copier les instructions IA", viewExample: "Voir l'exemple complet", viewSchema: "Voir le schéma JSON", requiredStructure: "Structure obligatoire",
     structureHelp: "Un plan contient une ou plusieurs séances de course datées. Les champs inconnus sont refusés afin de rendre les erreurs visibles.",
     durations: "Durées", durationHelp: "Le temps est toujours en secondes. La distance est toujours en mètres. Les valeurs sont des nombres entiers positifs.",
     targets: "Cibles", targetHelp: "Utilisez une cible par étape. L'allure est en minutes par kilomètre ; slow doit réellement être plus lent que fast.",
@@ -97,15 +102,17 @@ const translations = {
     ruleUnique: "Chaque identifiant de séance est unique dans le plan.", ruleTitle: "Les titres de séance Garmin contiennent au maximum 50 caractères.",
     ruleValidate: "Appelez l'endpoint de validation avant de soumettre un plan généré automatiquement.",
     ruleNoMarkdown: "Envoyez du JSON brut, sans bloc de code Markdown ni texte explicatif.", assistantAccess: "Accès pour assistant",
-    assistantHelp: "Créez une clé révocable pour ChatGPT, Claude ou votre automatisation. La clé complète n'est affichée qu'une fois.",
+    assistantHelp: "Créez une clé révocable pour ChatGPT, Claude ou votre automatisation. Ajoutez-la uniquement aux réglages d'authentification API protégés de l'assistant, jamais dans une conversation. La clé complète n'est affichée qu'une fois.",
     keyNamePlaceholder: "Mon assistant d'entraînement", createKey: "Créer une clé", apiWorkflow: "Flux API recommandé",
     apiStep1: "Récupérer les instructions de format et le schéma JSON.", apiStep2: "Générer le plan en JSON brut.",
     apiStep3: "L'envoyer à /api/v1/plans/validate.", apiStep4: "Corriger chaque erreur de validation structurée.",
     apiStep5: "Envoyer le plan valide à /api/v1/plans.", openApiDocs: "Ouvrir la documentation API interactive ↗",
+    apiStep6: "Interroger l'URL de soumission renvoyée jusqu'au statut completed ou failed.",
     connectGarmin: "Connecter Garmin", garminConnected: "Garmin connecté",
     connectedHelp: "Des jetons de session Garmin chiffrés sont conservés afin d'éviter une reconnexion à chaque import.",
     disconnectGarmin: "Déconnecter et supprimer les jetons", beforeConnecting: "Avant la connexion",
     garminDisclosure: "Cette intégration Garmin n'est pas officielle. Vos identifiants transitent une seule fois par Workout Relay et ne sont pas conservés. Des jetons de session chiffrés permettent l'accès ultérieur.",
+    garminTrustBoundary: "L'opérateur contrôlant le serveur hébergé, n'utilisez ce service que si vous lui faites confiance. Le chiffrement protège les données stockées, mais pas contre un code serveur malveillant.",
     garminEmail: "E-mail Garmin", garminPassword: "Mot de passe Garmin",
     garminConsent: "Je comprends que cette intégration n'est pas officielle et que des jetons de session chiffrés seront conservés.",
     connectSecurely: "Se connecter en sécurité", mfaHelp: "Saisissez le code de vérification envoyé par Garmin. Cette tentative expire après cinq minutes.",
@@ -118,11 +125,14 @@ const translations = {
     garminNotConnected: "Garmin non connecté", garminNeedsLogin: "Garmin doit être reconnecté", mockConnection: "Mode développement",
     connectedAs: "Connecté en tant que {name}", validPlan: "Plan valide : {count} séance(s).", planCompleted: "Plan envoyé : {created} créée(s), {updated} mise(s) à jour, {skipped} inchangée(s).",
     planQueued: "Plan mis en file d'attente. Vous pouvez quitter cette page pendant l'envoi.",
+    stillProcessing: "Envoi vers Garmin toujours en cours. Consultez l'historique dans quelques minutes.",
+    jsonCleaned: "Texte autour du JSON supprimé.", copyFailed: "Échec de la copie. Sélectionnez le texte et copiez-le manuellement.",
     invalidJson: "Le texte n'est pas un JSON valide : {detail}", validationFailed: "Le plan doit être corrigé :",
     apiKeyOnce: "Copiez cette clé maintenant. Elle ne sera plus affichée :", revoke: "Révoquer", keyCreated: "Clé API créée.",
     copied: "Copié dans le presse-papiers.", disconnected: "Jetons Garmin supprimés.", connected: "Garmin connecté.",
     mfaRequired: "Une vérification Garmin est nécessaire.", exampleLoaded: "Exemple chargé.", working: "Traitement…",
     status_completed: "Terminé", status_failed: "Échec", status_processing: "En cours", status_queued: "En attente",
+    historyCounts: "{created} créée(s) · {updated} mise(s) à jour · {skipped} inchangée(s)",
     confirmDisconnect: "Déconnecter Garmin et supprimer définitivement les jetons de session enregistrés ?",
     error_authentication_required: "Veuillez vous connecter.", error_invalid_credentials: "E-mail ou mot de passe incorrect.",
     error_email_exists: "Un compte existe déjà avec cet e-mail.", error_csrf_failed: "Votre session a expiré. Rechargez la page.",
@@ -256,9 +266,23 @@ async function openGarminDialog() {
   $("#garmin-dialog").showModal();
 }
 
+// Assistants usually wrap JSON in a ```json fence or add a sentence around it.
+function extractJson(text) {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/```[a-z]*\s*\n?([\s\S]*?)```/i);
+  let candidate = fenced ? fenced[1].trim() : trimmed;
+  const start = candidate.indexOf("{"); const end = candidate.lastIndexOf("}");
+  if (start !== -1 && end > start) candidate = candidate.slice(start, end + 1);
+  return candidate;
+}
 function parsePlan() {
-  try { return JSON.parse($("#plan-json").value); }
+  const textarea = $("#plan-json"); const raw = textarea.value;
+  const candidate = extractJson(raw);
+  let plan;
+  try { plan = JSON.parse(candidate); }
   catch (error) { const wrapped = new Error("invalid_json"); wrapped.detail = error.message; throw wrapped; }
+  if (candidate !== raw.trim()) { textarea.value = JSON.stringify(plan, null, 2); showToast(t("jsonCleaned")); }
+  return plan;
 }
 function validationText(item) { return t(item.code, { path: item.path, ...(item.params || {}) }); }
 function showPlanResult(result, error = false) {
@@ -269,7 +293,7 @@ function showPlanResult(result, error = false) {
 }
 
 async function waitForSubmission(id) {
-  for (let attempt = 0; attempt < 120; attempt += 1) {
+  for (let attempt = 0; attempt < 180; attempt += 1) {
     const status = await api(`/api/v1/plans/${id}`);
     if (status.status === "completed") return status;
     if (status.status === "failed") {
@@ -279,13 +303,18 @@ async function waitForSubmission(id) {
     }
     await new Promise((resolve) => window.setTimeout(resolve, 1000));
   }
-  const timeout = new Error("internal_upload_error"); timeout.code = "internal_upload_error"; throw timeout;
+  return null;
 }
 
 async function loadHistory() {
   const data = await api("/api/v1/plans"); const list = $("#history-list");
   if (!data.items.length) { list.innerHTML = `<p class="muted">${escapeHtml(t("noPlans"))}</p>`; return; }
-  list.innerHTML = data.items.map((item) => `<div class="history-row"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.plan_id)}</span><span class="status-pill ${item.status === "failed" ? "failed" : ""}">${escapeHtml(t(`status_${item.status}`))}</span><span>${new Intl.DateTimeFormat(state.language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.created_at))}</span></div>`).join("");
+  list.innerHTML = data.items.map((item) => {
+    let detail = "";
+    if (item.status === "failed") detail = errorText({ code: item.result?.code });
+    else if (item.status === "completed" && item.result?.counts) detail = t("historyCounts", item.result.counts);
+    return `<div class="history-row"><span class="history-main"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.plan_id)}</small></span><span class="status-pill ${item.status === "failed" ? "failed" : ""}">${escapeHtml(t(`status_${item.status}`))}</span><span>${new Intl.DateTimeFormat(state.language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.created_at))}</span>${detail ? `<p class="history-detail ${item.status === "failed" ? "error" : ""}">${escapeHtml(detail)}</p>` : ""}</div>`;
+  }).join("");
 }
 
 async function loadKeys() {
@@ -359,17 +388,29 @@ $("#upload-plan").addEventListener("click", async (event) => {
     const queued = await api("/api/v1/plans", { method: "POST", body: JSON.stringify(parsePlan()) });
     showPlanResult({ message: t("planQueued") }); await loadHistory();
     const result = await waitForSubmission(queued.id);
-    showPlanResult({ message: t("planCompleted", result.result.counts) }); await loadHistory();
+    showPlanResult({ message: result ? t("planCompleted", result.result.counts) : t("stillProcessing") }); await loadHistory();
   } catch (error) { showPlanResult(error.message === "invalid_json" ? { message: t("invalidJson", { detail: error.detail }) } : error.validationErrors ? error : { message: errorText(error) }, true); }
   finally { setBusy(event.currentTarget, false); }
 });
 $("#refresh-history").addEventListener("click", loadHistory);
 
+async function instructionsText() {
+  const [info, example] = await Promise.all([api(`/api/v1/plan-format?language=${state.language}`), api("/api/v1/plan-example")]);
+  const endpoints = `Authentication: ${info.authentication}\nSchema: ${info.schema_url}\nExample: ${info.example_url}\nValidate: POST ${info.validate_url}\nSubmit: POST ${info.submit_url}\nStatus: GET ${info.status_url_template}`;
+  return `${info.purpose}\n\n${info.rules.map((rule) => `- ${rule}`).join("\n")}\n\n${endpoints}\n\nExample JSON:\n${JSON.stringify(example, null, 2)}`;
+}
+// Safari only allows clipboard writes started synchronously inside the tap, so
+// hand it a ClipboardItem whose content resolves after the network requests.
+function copyText(textPromise) {
+  if (window.ClipboardItem && navigator.clipboard?.write) {
+    const blob = textPromise.then((text) => new Blob([text], { type: "text/plain" }));
+    return navigator.clipboard.write([new ClipboardItem({ "text/plain": blob })]);
+  }
+  return textPromise.then((text) => navigator.clipboard.writeText(text));
+}
 $("#copy-instructions").addEventListener("click", async () => {
-  const info = await api(`/api/v1/plan-format?language=${state.language}`);
-  const example = await api("/api/v1/plan-example");
-  const text = `${info.purpose}\n\n${info.rules.map((rule) => `- ${rule}`).join("\n")}\n\nExample:\n${JSON.stringify(example, null, 2)}`;
-  await navigator.clipboard.writeText(text); showToast(t("copied"));
+  try { await copyText(instructionsText()); showToast(t("copied")); }
+  catch (_) { showToast(t("copyFailed")); }
 });
 $("#create-key").addEventListener("click", async (event) => {
   setBusy(event.currentTarget, true);

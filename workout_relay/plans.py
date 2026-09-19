@@ -81,7 +81,7 @@ def example_plan() -> dict:
     return copy.deepcopy(EXAMPLE_PLAN)
 
 
-def assistant_instructions(language: str = "en") -> dict:
+def assistant_instructions(language: str = "en", base_url: str = "") -> dict:
     if language == "fr":
         purpose = (
             "Produisez uniquement un objet JSON conforme au schéma Workout Relay. "
@@ -95,6 +95,7 @@ def assistant_instructions(language: str = "en") -> dict:
             "Une cible cardiaque utilise low et high en bpm avec low strictement inférieur à high.",
             "Après expansion des répétitions, un entraînement ne peut pas dépasser 50 étapes.",
             "Validez le JSON avec l'endpoint de validation avant de le soumettre.",
+            "Une soumission valide renvoie HTTP 202. Interrogez ensuite son URL de statut jusqu'à completed ou failed.",
         ]
     else:
         purpose = (
@@ -109,14 +110,23 @@ def assistant_instructions(language: str = "en") -> dict:
             "Heart-rate targets use low and high bpm with low strictly below high.",
             "A workout may have no more than 50 steps after repeat expansion.",
             "Validate the JSON with the validation endpoint before submitting it.",
+            "A valid submission returns HTTP 202. Poll its status URL until it is completed or failed.",
         ]
+    root = base_url.rstrip("/")
+
+    def endpoint(path: str) -> str:
+        return f"{root}{path}" if root else path
+
     return {
         "language": language,
         "purpose": purpose,
         "rules": rules,
-        "schema_url": "/api/v1/plan-schema",
-        "example_url": "/api/v1/plan-example",
-        "validate_url": "/api/v1/plans/validate",
+        "authentication": "Authorization: Bearer <Workout Relay API key>",
+        "schema_url": endpoint("/api/v1/plan-schema"),
+        "example_url": endpoint("/api/v1/plan-example"),
+        "validate_url": endpoint("/api/v1/plans/validate"),
+        "submit_url": endpoint("/api/v1/plans"),
+        "status_url_template": endpoint("/api/v1/plans/{submission_id}"),
     }
 
 

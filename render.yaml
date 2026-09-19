@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: workout-relay
+    runtime: docker
+    region: frankfurt
+    plan: 0.5c-512mb
+    autoDeployTrigger: checksPass
+    healthCheckPath: /readyz
+    maxShutdownDelaySeconds: 60
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: GARMIN_MODE
+        value: live
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: workout-relay-db
+          property: connectionString
+      - key: MASTER_ENCRYPTION_KEY
+        generateValue: true
+      - key: SESSION_DAYS
+        value: "30"
+      - key: PLAN_RETENTION_DAYS
+        value: "90"
+      - key: MAX_PLAN_BYTES
+        value: "1048576"
+
+databases:
+  - name: workout-relay-db
+    region: frankfurt
+    plan: 0.1c-256mb
+    databaseName: workout_relay
+    user: workout_relay
+    ipAllowList: []

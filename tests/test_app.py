@@ -1,13 +1,16 @@
 import copy
 import asyncio
+from datetime import timedelta
 
 import httpx
 import pytest
 from sqlalchemy import select
 
 from workout_relay.app import create_app
-from workout_relay.database import GarminConnection, User
+from workout_relay.garmin import MockGarminGateway
+from workout_relay.database import BrowserSession, GarminConnection, PlanSubmission, User, now
 from workout_relay.plans import EXAMPLE_PLAN
+from workout_relay.security import hash_password
 
 
 async def register(client):
@@ -128,6 +131,11 @@ async def test_mfa_api_key_language_and_disconnect(settings):
             assert token.startswith("wkr_")
             bearer = {"Authorization": f"Bearer {token}"}
             assert (await client.post("/api/v1/plans/validate", headers=bearer, json=EXAMPLE_PLAN)).status_code == 200
+            queued = await client.post("/api/v1/plans", headers=bearer, json=EXAMPLE_PLAN)
+            assert queued.status_code == 202
+            uploaded = await wait_for_submission(client, queued.json()["id"], bearer)
+            assert uploaded["status"] == "completed"
+            assert uploaded["result"]["counts"]["created"] == 2
             assert (
                 await client.post(
                     "/api/v1/api-keys", headers=bearer, json={"name": "forbidden"}
@@ -167,8 +175,19 @@ async def test_structured_validation_and_bilingual_assets(settings):
             english = (await client.get("/api/v1/plan-format?language=en")).json()
             french = (await client.get("/api/v1/plan-format?language=fr")).json()
             assert english["language"] == "en" and french["language"] == "fr"
+            assert english["submit_url"] == "http://test/api/v1/plans"
+            assert english["status_url_template"].endswith("/plans/{submission_id}")
+            assert (await client.get("/readyz")).json() == {"status": "ready"}
+            assert (await client.get("/api/v1/me")).headers["cache-control"] == "no-store"
             openapi = (await client.get("/openapi.json")).json()
             assert "HTTPBearer" in openapi["components"]["securitySchemes"]
+            assert "WorkoutPlan" in openapi["components"]["schemas"]
+            assert openapi["servers"] == [{"url": "http://test"}]
+            assert (
+                openapi["paths"]["/api/v1/plans"]["post"]["requestBody"]["content"]
+                ["application/json"]["schema"]["$ref"]
+                == "#/components/schemas/WorkoutPlan"
+            )
 
 
 @pytest.mark.anyio
@@ -207,3 +226,116 @@ async def test_password_change_and_account_deletion_purge_secrets(settings):
             with app.state.database.session() as db:
                 assert db.scalar(select(User).where(User.email == "runner@example.com")) is None
                 assert db.scalar(select(GarminConnection)) is None
+
+
+@pytest.mark.anyio
+async def test_startup_purges_expired_sessions_and_old_completed_plans(settings):
+    app = create_app(settings)
+    database = app.state.database
+    database.initialize()
+    with database.session() as db:
+        user = User(
+            email="retention@example.com",
+            password_hash=hash_password("a-long-test-password"),
+        )
+        db.add(user)
+        db.flush()
+        old = now() - timedelta(days=2)
+        db.add(
+            BrowserSession(
+                token_hash="expired-session",
+                csrf_hash="expired-csrf",
+                user_id=user.id,
+                created_at=old,
+                expires_at=old,
+            )
+        )
+        db.add(
+            PlanSubmission(
+                user_id=user.id,
+                plan_id="old-plan",
+                title="Old plan",
+                content="{}",
+                status="completed",
+                created_at=old,
+                completed_at=old,
+            )
+        )
+        db.commit()
+
+    async with app.router.lifespan_context(app):
+        with database.session() as db:
+            assert db.scalar(select(BrowserSession)) is None
+            assert db.scalar(select(PlanSubmission)) is None
+
+
+class CountingGateway(MockGarminGateway):
+    def __init__(self, fail_first_session=False):
+        super().__init__()
+        self.sessions_opened = 0
+        self.fail_first_session = fail_first_session
+
+    def open_session(self, token_bundle):
+        self.sessions_opened += 1
+        if self.fail_first_session and self.sessions_opened == 1:
+            raise RuntimeError("unexpected client failure")
+        return super().open_session(token_bundle)
+
+
+async def connect_and_register(client):
+    csrf = await register(client)
+    mutation = {"X-CSRF-Token": csrf}
+    await client.post(
+        "/api/v1/garmin/connect/start",
+        headers=mutation,
+        json={"email": "garmin@example.com", "password": "garmin-password"},
+    )
+    return mutation
+
+
+@pytest.mark.anyio
+async def test_one_garmin_login_per_plan(settings):
+    gateway = CountingGateway()
+    app = create_app(settings, gateway)
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            mutation = await connect_and_register(client)
+            queued = await client.post("/api/v1/plans", headers=mutation, json=EXAMPLE_PLAN)
+            result = await wait_for_submission(client, queued.json()["id"])
+            assert result["result"]["counts"]["created"] == 2
+            assert gateway.sessions_opened == 1
+
+            # A fully unchanged plan needs no Garmin login at all.
+            queued = await client.post("/api/v1/plans", headers=mutation, json=EXAMPLE_PLAN)
+            await wait_for_submission(client, queued.json()["id"])
+            assert gateway.sessions_opened == 1
+
+
+@pytest.mark.anyio
+async def test_worker_survives_failures(settings, monkeypatch):
+    from workout_relay import app as app_module
+
+    real = app_module.process_next_submission
+    calls = {"count": 0}
+
+    async def flaky(*args):
+        calls["count"] += 1
+        if calls["count"] == 1:
+            raise RuntimeError("database blip")
+        return await real(*args)
+
+    monkeypatch.setattr(app_module, "process_next_submission", flaky)
+    app = create_app(settings, CountingGateway(fail_first_session=True))
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            mutation = await connect_and_register(client)
+            first = await client.post("/api/v1/plans", headers=mutation, json=EXAMPLE_PLAN)
+            first_result = await wait_for_submission(client, first.json()["id"])
+            assert first_result["status"] == "failed"
+            assert first_result["result"]["code"] == "internal_upload_error"
+
+            second = await client.post("/api/v1/plans", headers=mutation, json=EXAMPLE_PLAN)
+            second_result = await wait_for_submission(client, second.json()["id"])
+            assert second_result["status"] == "completed"

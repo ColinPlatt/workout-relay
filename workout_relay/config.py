@@ -32,13 +32,19 @@ class Settings:
     def from_env(cls) -> "Settings":
         load_dotenv()
         app_env = os.getenv("APP_ENV", "development").lower()
-        database_url = os.getenv("DATABASE_URL", "sqlite:///./data/workout_relay.db")
+        database_url = _sqlalchemy_url(
+            os.getenv("DATABASE_URL", "sqlite:///./data/workout_relay.db")
+        )
         key = os.getenv("MASTER_ENCRYPTION_KEY") or ""
         if not key and app_env != "production":
             key = _development_key(database_url)
         settings = cls(
             app_env=app_env,
-            base_url=os.getenv("BASE_URL", "http://localhost:8000").rstrip("/"),
+            base_url=(
+                os.getenv("BASE_URL")
+                or os.getenv("RENDER_EXTERNAL_URL")
+                or "http://localhost:8000"
+            ).rstrip("/"),
             database_url=database_url,
             cookie_secure=_bool("COOKIE_SECURE", app_env == "production"),
             garmin_mode=os.getenv("GARMIN_MODE", "mock").lower(),
@@ -55,6 +61,12 @@ class Settings:
             raise ValueError("APP_ENV must be development, test, or production")
         if self.garmin_mode not in {"mock", "live"}:
             raise ValueError("GARMIN_MODE must be mock or live")
+        if self.session_days < 1:
+            raise ValueError("SESSION_DAYS must be positive")
+        if self.plan_retention_days < 1:
+            raise ValueError("PLAN_RETENTION_DAYS must be positive")
+        if self.max_plan_bytes < 1:
+            raise ValueError("MAX_PLAN_BYTES must be positive")
         if not self.master_encryption_key:
             raise ValueError("MASTER_ENCRYPTION_KEY is required")
         try:
@@ -68,6 +80,18 @@ class Settings:
                 raise ValueError("BASE_URL must use HTTPS in production")
             if self.garmin_mode != "live":
                 raise ValueError("GARMIN_MODE must be live in production")
+
+
+def _sqlalchemy_url(url: str) -> str:
+    """Select the installed psycopg 3 driver for plain Postgres URLs.
+
+    Hosting platforms such as Render supply ``postgresql://`` (or legacy
+    ``postgres://``) URLs, which SQLAlchemy maps to the uninstalled psycopg2.
+    """
+    for scheme in ("postgres://", "postgresql://"):
+        if url.startswith(scheme):
+            return "postgresql+psycopg://" + url.removeprefix(scheme)
+    return url
 
 
 def _development_key(database_url: str) -> str:

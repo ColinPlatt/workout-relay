@@ -65,3 +65,20 @@ peuvent pas être imbriquées. Une séance développée ne peut dépasser 50 ét
 Validez toujours le JSON généré avant de le soumettre. Chaque erreur contient un
 code stable, un chemin JSON et des paramètres afin qu'un assistant puisse
 corriger le plan.
+
+## Flux API pour un assistant
+
+Utilisez `Authorization: Bearer <clé API Workout Relay>` sur chaque endpoint
+privé.
+
+1. Récupérez `GET /api/v1/plan-format?language=fr`, `GET /api/v1/plan-schema`
+   et `GET /api/v1/plan-example`.
+2. Envoyez le JSON brut à `POST /api/v1/plans/validate` et corrigez toutes les
+   erreurs signalées.
+3. Envoyez l'objet valide à `POST /api/v1/plans`. Une réponse HTTP `202`
+   contient un `id` de soumission ; elle ne signifie pas que Garmin a terminé.
+4. Interrogez `GET /api/v1/plans/{id}` jusqu'au statut `completed` ou `failed`.
+   En cas de succès, consultez `result.counts` et le résultat de chaque séance.
+
+La réutilisation d'un `id` de séance est volontaire : les séances inchangées
+sont ignorées et les séances modifiées sont mises à jour sans doublon.

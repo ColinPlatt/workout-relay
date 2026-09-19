@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import hmac
 import json
+import logging
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field, SecretStr
@@ -34,6 +36,8 @@ from .plans import assistant_instructions, example_plan, plan_schema, validate_p
 from .rate_limit import RateLimiter
 from .security import TokenVault, hash_password, hash_token, opaque_token, verify_password
 from .workouts import build_workout, content_hash
+
+logger = logging.getLogger(__name__)
 
 SESSION_COOKIE = "workout_relay_session"
 CSRF_COOKIE = "workout_relay_csrf"
@@ -111,6 +115,16 @@ def create_app(
                 .where(PlanSubmission.status == "processing")
                 .values(status="queued")
             )
+            recovery_db.execute(
+                delete(BrowserSession).where(BrowserSession.expires_at <= now())
+            )
+            recovery_db.execute(
+                delete(PlanSubmission).where(
+                    PlanSubmission.status.in_(("completed", "failed")),
+                    PlanSubmission.created_at
+                    < now() - timedelta(days=settings.plan_retention_days),
+                )
+            )
             recovery_db.commit()
         worker = asyncio.create_task(
             upload_worker(database, vault, gateway, upload_locks, queue_event, worker_stop)
@@ -148,7 +162,17 @@ def create_app(
         response.headers["Referrer-Policy"] = "same-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
         response.headers["X-Frame-Options"] = "DENY"
-        if request.url.path.startswith("/api/v1/garmin/connect"):
+        if settings.app_env == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        private_prefixes = (
+            "/api/v1/auth",
+            "/api/v1/me",
+            "/api/v1/account",
+            "/api/v1/api-keys",
+            "/api/v1/garmin",
+            "/api/v1/plans",
+        )
+        if request.url.path.startswith(private_prefixes):
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -268,6 +292,12 @@ def create_app(
     async def health():
         return {"status": "ok", "garmin_mode": settings.garmin_mode}
 
+    @app.get("/readyz", tags=["system"])
+    async def ready():
+        with database.session() as readiness_db:
+            readiness_db.execute(select(1))
+        return {"status": "ready"}
+
     @app.get("/api/v1/plan-schema", tags=["plan format"])
     async def schema_endpoint():
         return plan_schema()
@@ -278,7 +308,7 @@ def create_app(
 
     @app.get("/api/v1/plan-format", tags=["plan format"])
     async def format_endpoint(language: str = "en"):
-        return assistant_instructions("fr" if language == "fr" else "en")
+        return assistant_instructions("fr" if language == "fr" else "en", settings.base_url)
 
     @app.post("/api/v1/auth/register", status_code=201, tags=["auth"])
     async def register(body: Credentials, response: Response, request: Request, db: Session = Depends(db_session)):
@@ -554,6 +584,28 @@ def create_app(
             raise api_error(404, "plan_not_found")
         return submission_json(item)
 
+    def custom_openapi() -> dict:
+        if app.openapi_schema:
+            return app.openapi_schema
+        specification = get_openapi(
+            title=app.title,
+            version=app.version,
+            description=app.description,
+            routes=app.routes,
+        )
+        specification["servers"] = [{"url": settings.base_url}]
+        schemas = specification.setdefault("components", {}).setdefault("schemas", {})
+        schemas["WorkoutPlan"] = openapi_plan_schema()
+        request_schema = {"$ref": "#/components/schemas/WorkoutPlan"}
+        for path in ("/api/v1/plans/validate", "/api/v1/plans"):
+            specification["paths"][path]["post"]["requestBody"]["content"][
+                "application/json"
+            ]["schema"] = request_schema
+        app.openapi_schema = specification
+        return specification
+
+    app.openapi = custom_openapi
+
     return app
 
 
@@ -568,7 +620,13 @@ async def upload_worker(
     while not stop.is_set():
         wake.clear()
         while not stop.is_set():
-            processed = await process_next_submission(database, vault, gateway, locks)
+            try:
+                processed = await process_next_submission(database, vault, gateway, locks)
+            except Exception:
+                # Never let one bad job or a database blip end the worker;
+                # interrupted jobs are requeued at the next startup.
+                logger.exception("upload worker iteration failed")
+                processed = False
             if not processed:
                 break
         if stop.is_set():
@@ -638,6 +696,7 @@ async def process_plan(
     details = []
     try:
         tokens = vault.decrypt(connection.encrypted_tokens)
+        garmin = None
         for workout_data in plan["workouts"]:
             digest = content_hash(workout_data)
             link = db.scalar(
@@ -659,9 +718,10 @@ async def process_plan(
                 if link
                 else None
             )
+            if garmin is None:
+                garmin = await asyncio.to_thread(gateway.open_session, tokens)
             published = await asyncio.to_thread(
-                gateway.publish,
-                tokens,
+                garmin.publish,
                 build_workout(workout_data),
                 workout_data["date"],
                 existing,
@@ -707,6 +767,7 @@ async def process_plan(
             "workouts": details,
         }
     except GarminError as exc:
+        db.rollback()
         if exc.code == "garmin_reauthentication_required":
             connection.status = "reauthentication_required"
         result = {"status": "failed", "code": exc.code, "counts": counts, "workouts": details}
@@ -717,6 +778,8 @@ async def process_plan(
         db.commit()
         return {"id": submission.id, **result}
     except Exception:
+        logger.exception("plan upload failed")
+        db.rollback()
         result = {"status": "failed", "code": "internal_upload_error", "counts": counts}
         submission.status = "failed"
         submission.completed_at = now()
@@ -784,6 +847,30 @@ def iso(value: datetime | None) -> str | None:
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
     return value.isoformat()
+
+
+def openapi_plan_schema() -> dict:
+    schema = plan_schema()
+    schema.pop("$schema", None)
+    schema.pop("$id", None)
+
+    def rewrite(value):
+        if isinstance(value, dict):
+            return {
+                key: (
+                    item.replace(
+                        "#/$defs/", "#/components/schemas/WorkoutPlan/$defs/"
+                    )
+                    if key == "$ref" and isinstance(item, str)
+                    else rewrite(item)
+                )
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [rewrite(item) for item in value]
+        return value
+
+    return rewrite(schema)
 
 
 app = create_app()

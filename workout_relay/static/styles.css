@@ -96,6 +96,10 @@ textarea { min-height: 390px; padding: 15px; resize: vertical; font: 13px/1.55 u
 .history-list { display: grid; }
 .history-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 20px; padding: 15px 0; border-top: 1px solid var(--line); }
 .history-row span { color: var(--muted); font-size: 13px; }
+.history-main strong, .history-main small { display: block; }
+.history-main strong { color: var(--ink); font-size: 15px; }
+.history-detail { grid-column: 1 / -1; margin: -12px 0 0; color: var(--muted); font-size: 13px; }
+.history-detail.error { color: var(--danger); }
 .status-pill { width: fit-content; padding: 3px 8px; background: var(--mint); border-radius: 99px; }
 .status-pill.failed { color: var(--danger); background: #fae4e1; }
 
@@ -149,6 +153,8 @@ footer { display: flex; justify-content: space-between; gap: 20px; padding: 24px
   .editor-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .action-spacer { display: none; }
   .editor-actions .button { width: 100%; }
+  /* iOS Safari zooms into any field whose font is smaller than 16px. */
+  textarea { font-size: 16px; }
   .inline-form { grid-template-columns: 1fr; }
   footer { flex-direction: column; }
 }

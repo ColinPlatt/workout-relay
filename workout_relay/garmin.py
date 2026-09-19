@@ -14,6 +14,7 @@ from typing import Any, Protocol
 from uuid import uuid4
 
 from garminconnect import Garmin
+from garminconnect.exceptions import GarminConnectAuthenticationError
 
 
 class GarminError(RuntimeError):
@@ -42,18 +43,16 @@ class Published:
     schedule_id: str | None
 
 
+class GarminSession(Protocol):
+    def publish(self, workout: Any, date: str, existing: dict | None) -> Published: ...
+
+
 class Gateway(Protocol):
     def start_login(self, user_id: str, email: str, password: str) -> Connected | MfaRequired: ...
 
     def complete_mfa(self, user_id: str, attempt_id: str, code: str) -> Connected: ...
 
-    def publish(
-        self,
-        token_bundle: str,
-        workout: Any,
-        date: str,
-        existing: dict | None,
-    ) -> Published: ...
+    def open_session(self, token_bundle: str) -> GarminSession: ...
 
 
 @dataclass
@@ -107,46 +106,16 @@ class LiveGarminGateway:
         finally:
             self._clear_credentials(attempt.client)
 
-    def publish(
-        self,
-        token_bundle: str,
-        workout: Any,
-        date: str,
-        existing: dict | None,
-    ) -> Published:
+    def open_session(self, token_bundle: str) -> "LiveGarminSession":
+        """Restore tokens once so a whole plan shares one Garmin login."""
         client = Garmin()
         try:
-            client.client.loads(token_bundle)
-            if existing:
-                workout_id = existing["garmin_workout_id"]
-                url = f"{client.garmin_workouts}/workout/{workout_id}"
-                payload = workout.to_dict()
-                payload["workoutId"] = int(workout_id)
-                client.client.put("connectapi", url, json=payload, api=True)
-                schedule_id = existing.get("garmin_schedule_id")
-                if existing.get("scheduled_date") != date:
-                    if schedule_id:
-                        try:
-                            client.delete_workout_schedule(int(schedule_id))
-                        except Exception:
-                            pass
-                    scheduled = client.schedule_workout(int(workout_id), date)
-                    schedule_id = scheduled.get("scheduleId") or scheduled.get("workoutScheduleId")
-            else:
-                uploaded = client.upload_running_workout(workout)
-                workout_id = uploaded["workoutId"]
-                scheduled = client.schedule_workout(workout_id, date)
-                schedule_id = scheduled.get("scheduleId") or scheduled.get("workoutScheduleId")
-            return Published(
-                token_bundle=client.client.dumps(),
-                workout_id=str(workout_id),
-                schedule_id=str(schedule_id) if schedule_id is not None else None,
-            )
-        except GarminError:
-            raise
+            # Let the pinned client validate and proactively refresh restored
+            # tokens before making write requests.
+            client.login(tokenstore=token_bundle)
         except Exception as exc:
-            code = "garmin_reauthentication_required" if _looks_like_auth(exc) else "garmin_upload_failed"
-            raise GarminError(code, _safe_detail(exc)) from exc
+            raise _publish_error(exc) from exc
+        return LiveGarminSession(client)
 
     def _connected(self, client: Garmin) -> Connected:
         if not client.client.is_authenticated:
@@ -176,6 +145,48 @@ class LiveGarminGateway:
         client.password = None
 
 
+class LiveGarminSession:
+    def __init__(self, client: Garmin):
+        self._client = client
+
+    def publish(self, workout: Any, date: str, existing: dict | None) -> Published:
+        client = self._client
+        try:
+            if existing:
+                workout_id = existing["garmin_workout_id"]
+                url = f"{client.garmin_workouts}/workout/{workout_id}"
+                payload = workout.to_dict()
+                payload["workoutId"] = int(workout_id)
+                client.client.put("connectapi", url, json=payload, api=True)
+                schedule_id = existing.get("garmin_schedule_id")
+                if existing.get("scheduled_date") != date:
+                    if schedule_id:
+                        try:
+                            client.unschedule_workout(int(schedule_id))
+                        except Exception as exc:
+                            # A schedule the user already removed in Garmin
+                            # must not block rescheduling; anything else
+                            # would leave a duplicate calendar entry.
+                            if not _looks_like_not_found(exc):
+                                raise
+                    scheduled = client.schedule_workout(int(workout_id), date)
+                    schedule_id = scheduled.get("scheduleId") or scheduled.get("workoutScheduleId")
+            else:
+                uploaded = client.upload_running_workout(workout)
+                workout_id = uploaded["workoutId"]
+                scheduled = client.schedule_workout(workout_id, date)
+                schedule_id = scheduled.get("scheduleId") or scheduled.get("workoutScheduleId")
+            return Published(
+                token_bundle=client.client.dumps(),
+                workout_id=str(workout_id),
+                schedule_id=str(schedule_id) if schedule_id is not None else None,
+            )
+        except GarminError:
+            raise
+        except Exception as exc:
+            raise _publish_error(exc) from exc
+
+
 class MockGarminGateway:
     """Deterministic development gateway; never makes a Garmin request."""
 
@@ -199,21 +210,36 @@ class MockGarminGateway:
             raise GarminError("garmin_mfa_failed")
         return Connected(f'{{"mock_user":"{user_id}"}}', "Mock Runner")
 
-    def publish(
-        self,
-        token_bundle: str,
-        workout: Any,
-        date: str,
-        existing: dict | None,
-    ) -> Published:
+    def open_session(self, token_bundle: str) -> "MockGarminSession":
+        return MockGarminSession(token_bundle)
+
+
+class MockGarminSession:
+    def __init__(self, token_bundle: str):
+        self._token_bundle = token_bundle
+
+    def publish(self, workout: Any, date: str, existing: dict | None) -> Published:
         workout_id = existing["garmin_workout_id"] if existing else f"mock-{uuid4().hex}"
         schedule_id = existing.get("garmin_schedule_id") if existing else f"schedule-{uuid4().hex}"
-        return Published(token_bundle, workout_id, schedule_id)
+        return Published(self._token_bundle, workout_id, schedule_id)
+
+
+def _publish_error(exc: Exception) -> GarminError:
+    code = "garmin_reauthentication_required" if _looks_like_auth(exc) else "garmin_upload_failed"
+    return GarminError(code, _safe_detail(exc))
 
 
 def _looks_like_auth(exc: Exception) -> bool:
+    # Restoring expired tokens raises GarminConnectAuthenticationError with a
+    # message ("Username and password are required") that names no status code.
+    if isinstance(exc, GarminConnectAuthenticationError):
+        return True
     text = str(exc).lower()
     return any(value in text for value in ("401", "403", "unauthorized", "authentication"))
+
+
+def _looks_like_not_found(exc: Exception) -> bool:
+    return "404" in str(exc)
 
 
 def _safe_detail(exc: Exception) -> str:

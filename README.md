@@ -9,6 +9,25 @@ or submit it through a revocable API key.
 > processed transiently and never stored; encrypted session tokens are retained
 > so uploads can run without repeated logins.
 
+## Phone-only user path
+
+1. Open the HTTPS website in Safari or Chrome and create a Workout Relay
+   account. The interface follows the browser's French/English preference and
+   also has a permanent language selector.
+2. Tap the Garmin status card, read the trust notice, and enter the Garmin
+   login once. If Garmin asks for MFA, enter the code on the same page.
+3. In **Upload**, choose a JSON file from the phone or paste its contents. Tap
+   **Validate**, correct any field-specific errors, then tap **Send to Garmin**.
+4. The request is safely queued. The page may be closed; **Plan history** shows
+   whether it completed or failed when the user returns.
+5. For ChatGPT, Claude, or another automation, create a revocable key under
+   **Automation**, copy the bilingual AI instructions, and configure the key in
+   the assistant's protected API-auth/secret setting—not in an ordinary chat.
+   The Garmin password is never shared with the assistant.
+
+The **Plan format** tab includes a complete example, JSON Schema, units, target
+rules, repeat limits, and copy-ready assistant instructions.
+
 ## Local development
 
 ```bash
@@ -39,3 +58,5 @@ docker compose up --build
 
 See [SECURITY.md](docs/SECURITY.md), [PLAN_FORMAT.md](docs/PLAN_FORMAT.md), and
 [DEPLOYMENT.md](docs/DEPLOYMENT.md) before enabling live Garmin authentication.
+The included `render.yaml` provides a phone-friendly Blueprint deployment with
+managed Postgres; reviewing it does not provision or bill any resources.

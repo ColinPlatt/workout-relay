@@ -104,6 +104,7 @@
             <p class="muted" data-i18n="guideIntro">Workout Relay does not ask an AI to interpret your plan at upload time. Every duration, target, repeat, and date is explicit, validated, and deterministic.</p>
             <div class="guide-actions">
               <button id="copy-instructions" class="button primary" type="button" data-i18n="copyAiInstructions">Copy AI instructions</button>
+              <a class="button ghost-border" href="/api/v1/plan-example" target="_blank" data-i18n="viewExample">View complete example</a>
               <a class="button secondary" href="/api/v1/plan-schema" target="_blank" data-i18n="viewSchema">View JSON Schema</a>
             </div>
           </article>
@@ -179,6 +180,7 @@
               <li data-i18n="apiStep3">POST it to /api/v1/plans/validate.</li>
               <li data-i18n="apiStep4">Fix every structured validation error.</li>
               <li data-i18n="apiStep5">POST the valid plan to /api/v1/plans.</li>
+              <li data-i18n="apiStep6">Poll the returned submission URL until it is completed or failed.</li>
             </ol>
             <a href="/docs" target="_blank" class="text-link" data-i18n="openApiDocs">Open interactive API documentation ↗</a>
           </article>
@@ -220,7 +222,7 @@
       <button id="disconnect-garmin" class="button danger wide" type="button" data-i18n="disconnectGarmin">Disconnect and delete tokens</button>
     </div>
     <form id="garmin-login-form">
-      <div class="notice warning"><strong data-i18n="beforeConnecting">Before connecting</strong><p data-i18n="garminDisclosure">This uses an unofficial Garmin integration. Your credentials pass through Workout Relay once and are not stored. Encrypted session tokens provide ongoing account access.</p></div>
+      <div class="notice warning"><strong data-i18n="beforeConnecting">Before connecting</strong><p data-i18n="garminDisclosure">This uses an unofficial Garmin integration. Your credentials pass through Workout Relay once and are not stored. Encrypted session tokens provide ongoing account access.</p><p data-i18n="garminTrustBoundary">Because the operator controls the hosted server, use this service only if you trust its operator. Encryption protects stored data, but cannot protect against malicious server code.</p></div>
       <label><span data-i18n="garminEmail">Garmin email</span><input id="garmin-email" type="email" autocomplete="username" required></label>
       <label><span data-i18n="garminPassword">Garmin password</span><input id="garmin-password" type="password" autocomplete="current-password" required></label>
       <label class="consent"><input id="garmin-consent" type="checkbox" required><span data-i18n="garminConsent">I understand this is unofficial and encrypted session tokens will be stored.</span></label>

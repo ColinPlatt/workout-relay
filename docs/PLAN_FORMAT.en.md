@@ -83,3 +83,19 @@ more than 50 steps after all repeats are expanded.
 
 Always validate generated JSON before submission. Validation errors include a
 stable code, JSON path, and parameters so an assistant can repair the plan.
+
+## Assistant API workflow
+
+Use `Authorization: Bearer <Workout Relay API key>` on every private endpoint.
+
+1. Fetch `GET /api/v1/plan-format?language=en`, `GET /api/v1/plan-schema`, and
+   `GET /api/v1/plan-example`.
+2. Send raw JSON to `POST /api/v1/plans/validate` and repair every reported
+   error.
+3. Send the valid object to `POST /api/v1/plans`. A successful request returns
+   HTTP `202` with a submission `id`; it does not mean Garmin has finished.
+4. Poll `GET /api/v1/plans/{id}` until `status` is `completed` or `failed`.
+   On completion, inspect `result.counts` and the per-workout actions.
+
+Reusing a workout `id` is intentional: unchanged workouts are skipped and
+changed workouts are updated rather than duplicated.
