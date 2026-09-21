@@ -20,8 +20,8 @@ const translations = {
     durations: "Durations", durationHelp: "Time is always seconds. Distance is always metres. Values must be positive whole numbers.",
     targets: "Targets", targetHelp: "Use one target per step. Pace is minutes per kilometre; slow must genuinely be slower than fast.",
     repeats: "Repeats", repeatHelp: "A repeat contains 1–5 simple steps. Repeats cannot be nested, and the expanded workout cannot exceed 50 steps.",
-    rulesChecklist: "Reliability checklist", ruleDate: "Workout IDs start with the same YYYY-MM-DD value as their date.",
-    ruleUnique: "Every workout ID is unique within the plan.", ruleTitle: "Garmin workout titles contain at most 50 characters.",
+    rulesChecklist: "Reliability checklist", ruleDate: "Use a distinct ID for each different workout; reuse that ID when editing or rescheduling it.",
+    ruleUnique: "IDs identify a workout across your whole account, not just within one plan.", ruleTitle: "Garmin workout titles contain at most 50 characters.",
     ruleValidate: "Call the validation endpoint before submitting an automatically generated plan.",
     ruleNoMarkdown: "Send raw JSON—not Markdown code fences or explanatory text.", assistantAccess: "Assistant access",
     assistantHelp: "Create a revocable bearer key for ChatGPT, Claude, or your own automation. Add it only to the assistant's protected API-auth settings—never an ordinary chat. The full key is displayed once.",
@@ -65,6 +65,8 @@ const translations = {
     error_garmin_attempt_expired: "The Garmin login attempt expired. Start again.",
     error_garmin_not_connected: "Connect Garmin before sending a plan.", error_garmin_reauthentication_required: "Garmin requires you to reconnect.",
     error_garmin_upload_failed: "Garmin could not accept the workout. Try again later.", error_internal_upload_error: "The upload could not be completed.",
+    error_garmin_outcome_unknown: "Garmin's response was unclear. Check Garmin Connect, then resend the exact same plan to check again. Do not change workout IDs: this could create duplicates. If this persists, contact the operator.",
+    error_garmin_prior_upload_unresolved: "A previous version of this workout is unfinished. Resend that exact plan first, keeping its workout IDs, before making changes.",
     error_plan_too_large: "The plan file is too large.", error_default: "Something went wrong. Please try again.",
     schema_required: "{path}: missing required field “{field}”.", schema_type: "{path}: incorrect value type.",
     schema_pattern: "{path}: value has an invalid format.", schema_const: "{path}: expected “{expected}”.",
@@ -73,7 +75,7 @@ const translations = {
     schema_minLength: "{path}: value is too short.", schema_maxLength: "{path}: value is too long.",
     schema_minItems: "{path}: add at least {limit} item(s).", schema_maxItems: "{path}: no more than {limit} item(s) are allowed.",
     schema_format: "{path}: invalid date or format.", duplicate_workout_id: "{path}: workout ID must be unique.",
-    invalid_date: "{path}: use a real date in YYYY-MM-DD format.", id_date_mismatch: "{path}: the ID must start with the workout date.",
+    invalid_date: "{path}: use a real date in YYYY-MM-DD format.",
     target_order: "{path}: low must be strictly lower than high.", pace_order: "{path}: slow must be a slower pace than fast.",
     expanded_steps: "{path}: repeat expansion creates {count} steps; the maximum is {maximum}."
   },
@@ -98,8 +100,8 @@ const translations = {
     durations: "Durées", durationHelp: "Le temps est toujours en secondes. La distance est toujours en mètres. Les valeurs sont des nombres entiers positifs.",
     targets: "Cibles", targetHelp: "Utilisez une cible par étape. L'allure est en minutes par kilomètre ; slow doit réellement être plus lent que fast.",
     repeats: "Répétitions", repeatHelp: "Une répétition contient 1 à 5 étapes simples. Elles ne peuvent pas être imbriquées et la séance développée ne peut dépasser 50 étapes.",
-    rulesChecklist: "Liste de fiabilité", ruleDate: "L'identifiant de la séance commence par la même date YYYY-MM-DD que son champ date.",
-    ruleUnique: "Chaque identifiant de séance est unique dans le plan.", ruleTitle: "Les titres de séance Garmin contiennent au maximum 50 caractères.",
+    rulesChecklist: "Liste de fiabilité", ruleDate: "Utilisez un identifiant distinct par séance différente ; réutilisez-le pour la modifier ou la déplacer.",
+    ruleUnique: "Les identifiants désignent une séance dans tout votre compte, pas seulement dans un plan.", ruleTitle: "Les titres de séance Garmin contiennent au maximum 50 caractères.",
     ruleValidate: "Appelez l'endpoint de validation avant de soumettre un plan généré automatiquement.",
     ruleNoMarkdown: "Envoyez du JSON brut, sans bloc de code Markdown ni texte explicatif.", assistantAccess: "Accès pour assistant",
     assistantHelp: "Créez une clé révocable pour ChatGPT, Claude ou votre automatisation. Ajoutez-la uniquement aux réglages d'authentification API protégés de l'assistant, jamais dans une conversation. La clé complète n'est affichée qu'une fois.",
@@ -143,6 +145,8 @@ const translations = {
     error_garmin_attempt_expired: "La tentative de connexion Garmin a expiré. Recommencez.",
     error_garmin_not_connected: "Connectez Garmin avant d'envoyer un plan.", error_garmin_reauthentication_required: "Garmin demande une nouvelle connexion.",
     error_garmin_upload_failed: "Garmin n'a pas accepté la séance. Réessayez plus tard.", error_internal_upload_error: "L'import n'a pas pu être terminé.",
+    error_garmin_outcome_unknown: "La réponse de Garmin est incertaine. Vérifiez Garmin Connect, puis renvoyez exactement le même plan pour vérifier à nouveau. Ne changez pas les identifiants : cela pourrait créer des doublons. Si le problème persiste, contactez l'opérateur.",
+    error_garmin_prior_upload_unresolved: "Une version précédente de cette séance est inachevée. Renvoyez d'abord ce plan exact, avec les mêmes identifiants, avant de le modifier.",
     error_plan_too_large: "Le fichier du plan est trop volumineux.", error_default: "Une erreur est survenue. Veuillez réessayer.",
     schema_required: "{path} : le champ « {field} » est obligatoire.", schema_type: "{path} : type de valeur incorrect.",
     schema_pattern: "{path} : format de valeur incorrect.", schema_const: "{path} : la valeur attendue est « {expected} ».",
@@ -151,7 +155,7 @@ const translations = {
     schema_minLength: "{path} : la valeur est trop courte.", schema_maxLength: "{path} : la valeur est trop longue.",
     schema_minItems: "{path} : ajoutez au moins {limit} élément(s).", schema_maxItems: "{path} : maximum {limit} élément(s).",
     schema_format: "{path} : date ou format incorrect.", duplicate_workout_id: "{path} : l'identifiant doit être unique.",
-    invalid_date: "{path} : utilisez une date réelle au format YYYY-MM-DD.", id_date_mismatch: "{path} : l'identifiant doit commencer par la date de la séance.",
+    invalid_date: "{path} : utilisez une date réelle au format YYYY-MM-DD.",
     target_order: "{path} : low doit être strictement inférieur à high.", pace_order: "{path} : slow doit être une allure plus lente que fast.",
     expanded_steps: "{path} : les répétitions produisent {count} étapes ; le maximum est {maximum}."
   }
@@ -377,20 +381,22 @@ $("#disconnect-garmin").addEventListener("click", async () => {
 $("#plan-file").addEventListener("change", async (event) => { const file = event.target.files[0]; if (file) $("#plan-json").value = await file.text(); });
 $("#load-example").addEventListener("click", async () => { $("#plan-json").value = JSON.stringify(await api("/api/v1/plan-example"), null, 2); showToast(t("exampleLoaded")); });
 $("#validate-plan").addEventListener("click", async (event) => {
-  setBusy(event.currentTarget, true);
+  const button = event.currentTarget;
+  setBusy(button, true);
   try { const result = await api("/api/v1/plans/validate", { method: "POST", body: JSON.stringify(parsePlan()) }); showPlanResult({ message: t("validPlan", { count: result.workout_count }) }); }
   catch (error) { showPlanResult(error.message === "invalid_json" ? { message: t("invalidJson", { detail: error.detail }) } : error.validationErrors ? error : { message: errorText(error) }, true); }
-  finally { setBusy(event.currentTarget, false); }
+  finally { setBusy(button, false); }
 });
 $("#upload-plan").addEventListener("click", async (event) => {
-  setBusy(event.currentTarget, true);
+  const button = event.currentTarget;
+  setBusy(button, true);
   try {
     const queued = await api("/api/v1/plans", { method: "POST", body: JSON.stringify(parsePlan()) });
     showPlanResult({ message: t("planQueued") }); await loadHistory();
     const result = await waitForSubmission(queued.id);
     showPlanResult({ message: result ? t("planCompleted", result.result.counts) : t("stillProcessing") }); await loadHistory();
   } catch (error) { showPlanResult(error.message === "invalid_json" ? { message: t("invalidJson", { detail: error.detail }) } : error.validationErrors ? error : { message: errorText(error) }, true); }
-  finally { setBusy(event.currentTarget, false); }
+  finally { setBusy(button, false); }
 });
 $("#refresh-history").addEventListener("click", loadHistory);
 
@@ -413,12 +419,13 @@ $("#copy-instructions").addEventListener("click", async () => {
   catch (_) { showToast(t("copyFailed")); }
 });
 $("#create-key").addEventListener("click", async (event) => {
-  setBusy(event.currentTarget, true);
+  const button = event.currentTarget;
+  setBusy(button, true);
   try {
     const result = await api("/api/v1/api-keys", { method: "POST", body: JSON.stringify({ name: $("#key-name").value || t("keyNamePlaceholder") }) });
     const box = $("#key-result"); box.textContent = `${t("apiKeyOnce")}\n\n${result.token}`; box.classList.remove("hidden"); showToast(t("keyCreated")); await loadKeys();
   } catch (error) { showToast(errorText(error)); }
-  finally { setBusy(event.currentTarget, false); }
+  finally { setBusy(button, false); }
 });
 
 $("#password-form").addEventListener("submit", async (event) => {

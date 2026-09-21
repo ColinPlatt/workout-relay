@@ -25,7 +25,7 @@ the same valid plan always produces the same Garmin workout structure.
 
 ```json
 {
-  "id": "2026-10-01_easy",
+  "id": "week40-easy",
   "date": "2026-10-01",
   "sport": "running",
   "title": "Easy aerobic run",
@@ -35,7 +35,10 @@ the same valid plan always produces the same Garmin workout structure.
 }
 ```
 
-The ID must be unique and start with the workout's date. Titles are limited to
+The ID must be unique across your account and stable when the date changes.
+Use 2–160 lowercase letters, digits, underscores or hyphens, starting with a
+letter or digit. Existing date-prefixed IDs remain valid: do not rename them
+when rescheduling. A new ID creates a different workout. Titles are limited to
 50 characters and descriptions to 500 characters.
 
 ## Simple steps

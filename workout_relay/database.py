@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import threading
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from uuid import uuid4
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, create_engine, delete, event, select
@@ -88,6 +91,18 @@ class WorkoutLink(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 
+class WorkoutOperation(Base):
+    """Durable progress, retained even when a submission fails or expires."""
+
+    __tablename__ = "workout_operations"
+    __table_args__ = (UniqueConstraint("user_id", "workout_key"),)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    workout_key: Mapped[str] = mapped_column(String(160))
+    content_hash: Mapped[str] = mapped_column(String(71))
+    progress: Mapped[str] = mapped_column(Text, default="{}")
+
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
@@ -101,12 +116,70 @@ class Database:
     def __init__(self, url: str):
         kwargs = {"check_same_thread": False} if url.startswith("sqlite") else {}
         self.engine = create_engine(url, pool_pre_ping=True, connect_args=kwargs)
+        self._owner_mutex = threading.Lock()
         if url.startswith("sqlite"):
             event.listen(self.engine, "connect", _enable_sqlite_foreign_keys)
         self.sessions = sessionmaker(self.engine, expire_on_commit=False)
 
     def initialize(self) -> None:
-        Base.metadata.create_all(self.engine)
+        with self.engine.begin() as connection:
+            if self.engine.dialect.name == "postgresql":
+                connection.exec_driver_sql("SELECT pg_advisory_xact_lock(78234602)")
+            Base.metadata.create_all(connection)
+
+    @contextmanager
+    def upload_owner(self):
+        """One uploader across processes, including overlapping deployments.
+
+        The dedicated connection owns the PostgreSQL session lock. Never return
+        it to the pool while locked. SQLite development uses an OS file lock.
+
+        The ownership check runs both on the event loop and, through a
+        checkpoint, on the Garmin worker thread. Those never overlap while the
+        loop awaits that thread, but the mutex makes the invariant explicit and
+        keeps a check from racing the release.
+        """
+        if self.engine.dialect.name == "postgresql":
+            with self.engine.connect() as connection:
+                if not connection.exec_driver_sql("SELECT pg_try_advisory_lock(78234601)").scalar():
+                    yield None
+                    return
+                backend = connection.exec_driver_sql("SELECT pg_backend_pid()").scalar()
+
+                def check():
+                    with self._owner_mutex:
+                        if connection.invalidated or connection.exec_driver_sql("SELECT pg_backend_pid()").scalar() != backend:
+                            raise RuntimeError("upload_ownership_lost")
+
+                try:
+                    yield check
+                finally:
+                    with self._owner_mutex:
+                        try:
+                            connection.exec_driver_sql("SELECT pg_advisory_unlock(78234601)")
+                        except Exception:
+                            connection.invalidate()
+        elif self.engine.dialect.name == "sqlite" and self.engine.url.database not in (None, "", ":memory:"):
+            try:
+                import fcntl
+            except ImportError:  # pragma: no cover - platform specific
+                raise ValueError(
+                    "File-locked SQLite uploads need a Unix host. Run the Docker "
+                    "image, or point DATABASE_URL at PostgreSQL."
+                ) from None
+            lock_path = Path(self.engine.url.database).resolve().with_suffix(".upload.lock")
+            with lock_path.open("a") as lock:
+                try:
+                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    yield None
+                    return
+                try:
+                    yield lambda: None
+                finally:
+                    fcntl.flock(lock, fcntl.LOCK_UN)
+        else:
+            raise ValueError("Uploads require PostgreSQL or file-backed SQLite")
 
     def session(self) -> Session:
         return self.sessions()

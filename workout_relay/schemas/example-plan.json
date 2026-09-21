@@ -5,7 +5,7 @@
   "description": "One interval session and one easy aerobic run.",
   "workouts": [
     {
-      "id": "2026-10-01_intervals",
+      "id": "5k-block-intervals",
       "date": "2026-10-01",
       "sport": "running",
       "title": "6 x 400 m",
@@ -46,7 +46,7 @@
       ]
     },
     {
-      "id": "2026-10-04_easy",
+      "id": "5k-block-easy",
       "date": "2026-10-04",
       "sport": "running",
       "title": "Easy aerobic run",

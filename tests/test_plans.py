@@ -22,7 +22,6 @@ def test_semantic_errors_are_structured_and_repairable():
     }
     errors = validate_plan(plan)
     assert {item["code"] for item in errors} == {
-        "id_date_mismatch",
         "expanded_steps",
         "pace_order",
     }
@@ -43,3 +42,13 @@ def test_assistant_guidance_is_bilingual():
     assert "Return only" in english["purpose"]
     assert "Produisez uniquement" in french["purpose"]
     assert english["validate_url"] == french["validate_url"]
+
+
+def test_workout_identity_is_independent_of_its_date():
+    plan = copy.deepcopy(EXAMPLE_PLAN)
+    plan["workouts"][0]["date"] = "2026-10-09"
+    assert validate_plan(plan) == []  # legacy date-prefixed IDs remain valid
+    plan["workouts"][0]["id"] = "training-block-1_intervals"
+    assert validate_plan(plan) == []
+    plan["workouts"][1]["id"] = plan["workouts"][0]["id"]
+    assert "duplicate_workout_id" in {error["code"] for error in validate_plan(plan)}

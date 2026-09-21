@@ -31,6 +31,7 @@ databases:
   - name: workout-relay-db
     region: frankfurt
     plan: 0.1c-256mb
+    diskSizeGB: 1
     databaseName: workout_relay
     user: workout_relay
     ipAllowList: []

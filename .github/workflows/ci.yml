@@ -10,6 +10,21 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: relay-test-only
+          POSTGRES_DB: relay_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_POSTGRES_URL: postgresql+psycopg://postgres:relay-test-only@localhost:5432/relay_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,5 +37,7 @@ jobs:
         run: pytest
       - name: Check browser JavaScript
         run: node --check workout_relay/static/app.js
+      - name: Test asynchronous buttons
+        run: node --test tests/buttons.test.cjs
       - name: Build deployment image
         run: docker build -t workout-relay:test .

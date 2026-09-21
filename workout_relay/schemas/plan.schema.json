@@ -28,7 +28,8 @@
       "properties": {
         "id": {
           "type": "string",
-          "pattern": "^\\d{4}-\\d{2}-\\d{2}_[a-z0-9][a-z0-9_]{1,79}$"
+          "pattern": "^[a-z0-9][a-z0-9_-]{1,159}$",
+          "description": "Stable workout identity across this account. Keep unchanged when rescheduling."
         },
         "date": { "type": "string", "format": "date" },
         "sport": { "const": "running" },

@@ -6,10 +6,11 @@ import asyncio
 import hmac
 import json
 import logging
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.openapi.utils import get_openapi
@@ -29,6 +30,7 @@ from .database import (
     PlanSubmission,
     User,
     WorkoutLink,
+    WorkoutOperation,
     now,
 )
 from .garmin import Connected, GarminError, Gateway, LiveGarminGateway, MfaRequired, MockGarminGateway
@@ -38,6 +40,9 @@ from .security import TokenVault, hash_password, hash_token, opaque_token, verif
 from .workouts import build_workout, content_hash
 
 logger = logging.getLogger(__name__)
+
+# Render allows 60s; leave headroom, and rely on the journal past the deadline.
+SHUTDOWN_DRAIN_SECONDS = 45
 
 SESSION_COOKIE = "workout_relay_session"
 CSRF_COOKIE = "workout_relay_csrf"
@@ -111,11 +116,6 @@ def create_app(
         database.initialize()
         with database.session() as recovery_db:
             recovery_db.execute(
-                update(PlanSubmission)
-                .where(PlanSubmission.status == "processing")
-                .values(status="queued")
-            )
-            recovery_db.execute(
                 delete(BrowserSession).where(BrowserSession.expires_at <= now())
             )
             recovery_db.execute(
@@ -134,9 +134,13 @@ def create_app(
         finally:
             worker_stop.set()
             queue_event.set()
-            worker.cancel()
-            with suppress(asyncio.CancelledError):
-                await worker
+            # Drain the active operation before releasing database ownership;
+            # cancelling to_thread does not stop its Garmin request. The drain
+            # is bounded: past the deadline a forced kill is safe, because the
+            # journal survives and the advisory lock dies with the connection.
+            await drain(worker, SHUTDOWN_DRAIN_SECONDS)
+            if not worker.done():
+                logger.warning("upload worker still active at the shutdown deadline")
 
     app = FastAPI(
         title="Workout Relay API",
@@ -643,7 +647,18 @@ async def process_next_submission(
     gateway: Gateway,
     locks: UserLockPool,
 ) -> bool:
+    with database.upload_owner() as assert_owned:
+        if assert_owned is None:
+            return False
+        return await _process_owned_submission(database, vault, gateway, locks, assert_owned)
+
+
+async def _process_owned_submission(database, vault, gateway, locks, assert_owned) -> bool:
     with database.session() as db:
+        # Only the exclusive owner may recover interrupted submissions. Startup
+        # alone is not evidence that the previous deployment has stopped.
+        db.execute(update(PlanSubmission).where(PlanSubmission.status == "processing").values(status="queued"))
+        db.commit()
         submission = db.scalar(
             select(PlanSubmission)
             .where(PlanSubmission.status == "queued")
@@ -678,6 +693,7 @@ async def process_next_submission(
                 connection,
                 submission,
                 plan,
+                assert_owned,
             )
         return True
 
@@ -691,6 +707,7 @@ async def process_plan(
     connection: GarminConnection,
     submission: PlanSubmission,
     plan: dict,
+    assert_owned,
 ) -> dict:
     counts = {"created": 0, "updated": 0, "skipped": 0}
     details = []
@@ -698,34 +715,71 @@ async def process_plan(
         tokens = vault.decrypt(connection.encrypted_tokens)
         garmin = None
         for workout_data in plan["workouts"]:
+            assert_owned()
             digest = content_hash(workout_data)
+            operation = db.scalar(select(WorkoutOperation).where(
+                WorkoutOperation.user_id == user_id,
+                WorkoutOperation.workout_key == workout_data["id"],
+            ))
+            progress = json.loads(operation.progress) if operation else {}
             link = db.scalar(
                 select(WorkoutLink).where(
                     WorkoutLink.user_id == user_id,
                     WorkoutLink.workout_key == workout_data["id"],
                 )
             )
-            if link and link.content_hash == digest:
+            if operation and operation.content_hash != digest and not replaceable(progress, operation, link):
+                raise GarminError("garmin_prior_upload_unresolved")
+            settled = progress.get("stage", "completed") == "completed"
+            if link and link.content_hash == digest and settled and progress.get("cleanup") != "pending":
                 counts["skipped"] += 1
                 details.append({"id": workout_data["id"], "action": "skipped"})
                 continue
-            existing = (
-                {
+            # Remote identity lives in the journal, which can be ahead of the
+            # link when a write completed before its local commit.
+            if progress.get("workout_id"):
+                existing = {
+                    "garmin_workout_id": progress["workout_id"],
+                    "garmin_schedule_id": progress.get("schedule_id"),
+                    "scheduled_date": progress.get("scheduled_date"),
+                }
+            elif link:
+                existing = {
                     "garmin_workout_id": link.garmin_workout_id,
                     "garmin_schedule_id": link.garmin_schedule_id,
                     "scheduled_date": link.scheduled_date,
                 }
-                if link
-                else None
-            )
+            else:
+                existing = None
+            if operation is None:
+                operation = WorkoutOperation(user_id=user_id, workout_key=workout_data["id"], content_hash=digest)
+                db.add(operation)
+            if not progress or operation.content_hash != digest:
+                progress = restart_progress(progress)
+                operation.content_hash = digest
+                operation.progress = json.dumps(progress)
+            db.commit()
+            operation_id = operation.id
+            checkpoint = journal_writer(database, vault, user_id, operation_id, assert_owned)
+            workout = build_workout(workout_data)
+
             if garmin is None:
-                garmin = await asyncio.to_thread(gateway.open_session, tokens)
-            published = await asyncio.to_thread(
+                garmin = await drain_thread(gateway.open_session, tokens)
+            if link and link.content_hash == digest and settled:
+                # Nothing to upload; only the marker cleanup is outstanding.
+                await clean_up_marker(garmin, workout, progress, checkpoint)  # noqa: E501
+                counts["skipped"] += 1
+                details.append({"id": workout_data["id"], "action": "skipped"})
+                continue
+            published = await drain_thread(
                 garmin.publish,
-                build_workout(workout_data),
+                workout,
                 workout_data["date"],
                 existing,
+                progress=progress,
+                checkpoint=checkpoint,
             )
+            assert_owned()
             tokens = published.token_bundle
             connection.encrypted_tokens = vault.encrypt(tokens)
             if link:
@@ -755,6 +809,8 @@ async def process_plan(
                 }
             )
             db.commit()
+            # Only once the completed operation and the link are committed.
+            await clean_up_marker(garmin, workout, checkpoint.state, checkpoint)
         submission.status = "completed"
         submission.completed_at = now()
         submission.result = json.dumps({"counts": counts, "workouts": details})
@@ -768,6 +824,7 @@ async def process_plan(
         }
     except GarminError as exc:
         db.rollback()
+        assert_owned()
         if exc.code == "garmin_reauthentication_required":
             connection.status = "reauthentication_required"
         result = {"status": "failed", "code": exc.code, "counts": counts, "workouts": details}
@@ -780,6 +837,7 @@ async def process_plan(
     except Exception:
         logger.exception("plan upload failed")
         db.rollback()
+        assert_owned()
         result = {"status": "failed", "code": "internal_upload_error", "counts": counts}
         submission.status = "failed"
         submission.completed_at = now()
@@ -787,6 +845,124 @@ async def process_plan(
         database.audit(db, "plan.failed", user_id, {"submission_id": submission.id, "code": result["code"]})
         db.commit()
         return {"id": submission.id, **result}
+
+
+AMBIGUOUS_STAGES = ("creating", "scheduling")
+
+
+def replaceable(progress: dict, operation: WorkoutOperation, link: WorkoutLink | None) -> bool:
+    """May a changed payload replace this unfinished operation?
+
+    Yes once the remote identity is known: both the update PUT and the
+    unschedule DELETE repeat safely. An ambiguous creation or scheduling must
+    be reconciled first, and older journals without a recorded identity keep
+    the conservative behaviour.
+    """
+    stage = progress.get("stage", "completed")
+    if stage in AMBIGUOUS_STAGES:
+        return False
+    if stage == "ready":
+        return True
+    if progress.get("workout_id"):
+        return True
+    # No journalled identity: only a link proves where the last version went.
+    return stage == "completed" and link is not None and link.content_hash == operation.content_hash
+
+
+def restart_progress(previous: dict) -> dict:
+    """Begin a new payload attempt, keeping remote identity and cleanup debt."""
+    carried = {
+        key: previous[key]
+        for key in ("workout_id", "schedule_id", "scheduled_date", "cleanup", "marker")
+        if previous.get(key) is not None
+    }
+    carried.setdefault("marker", f"[Workout Relay:{uuid4()}]")
+    carried["stage"] = "ready"
+    return carried
+
+
+def journal_writer(database: Database, vault: TokenVault, user_id: str, operation_id: str, assert_owned):
+    """Persist journal progress, and remember the last state written.
+
+    Callers must read progress back from `checkpoint.state` rather than the
+    request's Session, whose copy of the row is stale: the journal is written
+    by a different Session and `expire_on_commit` is off.
+    """
+    written: dict = {}
+
+    def checkpoint(state: dict, refreshed_tokens: str) -> None:
+        assert_owned()
+        # Runs in the Garmin thread: never share the request's Session.
+        with database.session() as journal_db:
+            journal = journal_db.get(WorkoutOperation, operation_id)
+            connected = journal_db.get(GarminConnection, user_id)
+            if journal is None or connected is None:
+                raise GarminError("garmin_not_connected")
+            journal.progress = json.dumps(state)
+            connected.encrypted_tokens = vault.encrypt(refreshed_tokens)
+            journal_db.commit()
+        written.clear()
+        written.update(state)
+
+    checkpoint.state = written
+    return checkpoint
+
+
+async def clean_up_marker(garmin, workout, progress: dict, checkpoint) -> None:
+    """Best-effort removal of a recovery marker from a created workout.
+
+    A failure here never fails an upload that already succeeded, and never
+    repeats a creation or scheduling request; the next submission retries it.
+    """
+    if progress.get("cleanup") != "pending" or not progress.get("workout_id"):
+        return
+    try:
+        await drain_thread(
+            garmin.cleanup_marker,
+            workout,
+            progress["workout_id"],
+            progress=progress,
+            checkpoint=checkpoint,
+        )
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.warning("marker cleanup failed; retrying on a later submission", exc_info=True)
+
+
+async def drain(task: asyncio.Task, timeout: float | None = None):
+    """Wait for `task` even while this coroutine is being cancelled.
+
+    `shield()` alone is not enough: the cancellation still escapes the await,
+    which would release upload ownership while a Garmin request runs on.
+    """
+    loop = asyncio.get_running_loop()
+    deadline = None if timeout is None else loop.time() + timeout
+    cancelled = False
+    while not task.done():
+        remaining = None if deadline is None else deadline - loop.time()
+        if remaining is not None and remaining <= 0:
+            break
+        try:
+            # asyncio.wait() never cancels the task it is waiting on.
+            await asyncio.wait({task}, timeout=remaining)
+        except asyncio.CancelledError:
+            cancelled = True
+    if not task.done():
+        # Deadline reached: the caller decides, and cancellation is not
+        # re-raised because shutdown must continue either way.
+        return None
+    if cancelled:
+        # Retrieve any exception before propagating cancellation.
+        if not task.cancelled():
+            task.exception()
+        raise asyncio.CancelledError
+    return task.result()
+
+
+async def drain_thread(function, *args, **kwargs):
+    """Keep ownership until an already-started thread actually exits."""
+    return await drain(asyncio.create_task(asyncio.to_thread(function, *args, **kwargs)))
 
 
 def api_error(status: int, code: str) -> HTTPException:

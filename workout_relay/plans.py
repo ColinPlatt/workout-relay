@@ -42,8 +42,6 @@ def validate_plan(plan: Any) -> list[dict]:
             date.fromisoformat(workout["date"])
         except ValueError:
             errors.append({"path": f"{prefix}.date", "code": "invalid_date", "params": {}})
-        if not workout_id.startswith(workout["date"] + "_"):
-            errors.append({"path": f"{prefix}.id", "code": "id_date_mismatch", "params": {}})
 
         expanded = 0
         for step_index, step in enumerate(workout["steps"]):
@@ -89,7 +87,7 @@ def assistant_instructions(language: str = "en", base_url: str = "") -> dict:
         )
         rules = [
             "Utilisez schema_version 1 et sport running.",
-            "Chaque identifiant d'entraînement commence par sa date YYYY-MM-DD suivie d'un souligné.",
+            "Chaque id de séance est stable et unique pour ce compte : 2 à 160 caractères minuscules, chiffres, _ ou -, commençant par une lettre ou un chiffre. Conservez cet id si la date change.",
             "Les durées time sont en secondes et distance en mètres.",
             "Une cible d'allure utilise slow et fast au format M:SS par kilomètre; slow doit être plus lent.",
             "Une cible cardiaque utilise low et high en bpm avec low strictement inférieur à high.",
@@ -104,7 +102,7 @@ def assistant_instructions(language: str = "en", base_url: str = "") -> dict:
         )
         rules = [
             "Use schema_version 1 and sport running.",
-            "Every workout id starts with its YYYY-MM-DD date followed by an underscore.",
+            "Each workout id is stable and unique for this account: 2–160 lowercase letters, digits, _ or -, starting with a letter or digit. Keep the same id when changing its date.",
             "time durations are seconds and distance durations are metres.",
             "Pace targets use slow and fast in M:SS per kilometre; slow must be the slower pace.",
             "Heart-rate targets use low and high bpm with low strictly below high.",

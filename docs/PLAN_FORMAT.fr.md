@@ -25,7 +25,7 @@ l'import : un même plan valide produit toujours la même structure Garmin.
 
 ```json
 {
-  "id": "2026-10-01_endurance",
+  "id": "semaine40-endurance",
   "date": "2026-10-01",
   "sport": "running",
   "title": "Endurance fondamentale",
@@ -35,7 +35,11 @@ l'import : un même plan valide produit toujours la même structure Garmin.
 }
 ```
 
-L'identifiant est unique et commence par la date de la séance. Le titre est
+L'identifiant est unique pour votre compte et reste inchangé si la date change.
+Utilisez 2 à 160 lettres minuscules, chiffres, soulignés ou tirets, en commençant
+par une lettre ou un chiffre. Les anciens identifiants préfixés par une date
+restent valides : ne les renommez pas pour déplacer une séance. Un nouvel
+identifiant crée une autre séance. Le titre est
 limité à 50 caractères et la description à 500 caractères.
 
 ## Étapes simples

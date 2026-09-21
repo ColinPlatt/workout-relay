@@ -84,6 +84,7 @@ async def test_complete_mobile_flow_and_idempotency(settings):
 
             changed = copy.deepcopy(EXAMPLE_PLAN)
             changed["workouts"][0]["description"] = "Updated"
+            changed["workouts"][0]["date"] = "2026-10-09"
             third = await client.post("/api/v1/plans", headers=mutation, json=changed)
             third_result = await wait_for_submission(client, third.json()["id"])
             assert third_result["result"]["counts"] == {
@@ -91,6 +92,7 @@ async def test_complete_mobile_flow_and_idempotency(settings):
                 "updated": 1,
                 "skipped": 1,
             }
+            assert third_result["result"]["workouts"][0]["garmin_workout_id"] == first_result["result"]["workouts"][0]["garmin_workout_id"]
 
             history = (await client.get("/api/v1/plans")).json()["items"]
             assert [item["status"] for item in history] == ["completed"] * 3
