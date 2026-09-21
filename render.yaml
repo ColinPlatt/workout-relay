@@ -3,7 +3,10 @@ services:
     name: workout-relay
     runtime: docker
     region: frankfurt
-    plan: 0.5c-512mb
+    # Free instances sleep after 15 minutes idle and take about a minute to
+    # wake. A queued upload resumes on the next wake; the journal makes an
+    # interrupted one safe.
+    plan: free
     autoDeployTrigger: checksPass
     healthCheckPath: /readyz
     maxShutdownDelaySeconds: 60
@@ -14,10 +17,14 @@ services:
         value: live
       - key: COOKIE_SECURE
         value: "true"
+      # Paste the DIRECT connection string of an external PostgreSQL database,
+      # not a pooled one: upload ownership uses session advisory locks, which a
+      # transaction pooler silently breaks. Render's own free Postgres is not
+      # an option here, because it is deleted 30 days after creation.
       - key: DATABASE_URL
-        fromDatabase:
-          name: workout-relay-db
-          property: connectionString
+        sync: false
+      # A randomized 256-bit base64 value, which is exactly the key format the
+      # token vault expects. Never rotate it while Garmin tokens exist.
       - key: MASTER_ENCRYPTION_KEY
         generateValue: true
       - key: SESSION_DAYS
@@ -26,12 +33,3 @@ services:
         value: "90"
       - key: MAX_PLAN_BYTES
         value: "1048576"
-
-databases:
-  - name: workout-relay-db
-    region: frankfurt
-    plan: 0.1c-256mb
-    diskSizeGB: 1
-    databaseName: workout_relay
-    user: workout_relay
-    ipAllowList: []

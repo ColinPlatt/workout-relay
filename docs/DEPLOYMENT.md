@@ -89,28 +89,49 @@ container.
 The Docker image remains portable and accepts any PostgreSQL SQLAlchemy URL;
 the prepared configuration below is the supported first deployment path.
 
-## Prepared Render deployment
+## Prepared Render deployment (free)
 
-`render.yaml` defines a single Docker web process and a private paid Postgres
-database in Frankfurt. Render supplies HTTPS and `RENDER_EXTERNAL_URL`, creates
-the database connection string, and generates the encryption key without
-committing it. The selected entry-level paid resources are intentional: the
-free Postgres tier expires and can delete account and Garmin-token data.
-The blueprint explicitly allocates 1 GB of database storage. Compute and storage
-are billed separately; review the displayed total. Existing databases cannot be
-shrunk: retain their current allocation in the blueprint if already above 1 GB.
-See the [Render database field reference](https://render.com/docs/blueprint-spec#database-fields).
+`render.yaml` defines a single free Docker web process in Frankfurt. Render
+supplies HTTPS and `RENDER_EXTERNAL_URL`, and generates `MASTER_ENCRYPTION_KEY`
+as a randomized 256-bit base64 value, which is the key format the token vault
+expects. The database is not declared in the blueprint: Render deletes a free
+PostgreSQL database 30 days after creation, along with every account and Garmin
+token in it. Host it somewhere whose free tier does not expire, such as Neon,
+and paste its connection string when Render prompts for `DATABASE_URL`.
 
-From a phone browser after this repository is on GitHub:
+**Use the direct connection string, not a pooled one.** Providers that offer a
+transaction pooler (Neon's `-pooler` host, PgBouncer and similar) break session
+advisory locks silently, which is how a single uploader is enforced. Uploads
+would then overlap between overlapping deployments.
 
-1. Sign in to Render with GitHub and open **New → Blueprint**.
-2. Select the private `workout-relay` repository and approve the two declared
-   resources and their displayed monthly price.
+What the free plan costs you, in behaviour rather than money:
+
+- The service sleeps after 15 minutes without traffic and takes about a minute
+  to wake. The first page load after a quiet spell is slow.
+- Uploads progress only while the service is awake. Leaving the page open keeps
+  it awake; a plan queued as it sleeps resumes on the next wake, and the
+  operation journal makes an interrupted upload safe to resume.
+- A workspace has 750 free instance hours per month across all free services.
+  Exhausting them suspends the service until the next month.
+- Garmin may block logins coming from cloud data centres. If that happens,
+  running this on a machine at home behind an HTTPS tunnel is both free and
+  more likely to work.
+
+Sign in to Render with GitHub and open **New → Blueprint** (this works from a
+phone browser):
+
+1. Select the `workout-relay` repository and approve the declared service.
+2. Paste the database connection string when prompted for `DATABASE_URL`.
+   Render asks only during the initial blueprint creation; afterwards, set it
+   in the service's environment settings.
 3. Wait for `/readyz` to pass, open the generated HTTPS URL, and create a
    disposable account first.
-4. Test mock-independent account and JSON validation behavior, then connect a
-   real Garmin account through the website and submit one harmless workout.
+4. Test account creation and JSON validation, then connect a real Garmin
+   account through the website and submit one harmless workout.
 5. Delete the disposable account and confirm its Garmin tokens disappear.
 
 Do not rotate or delete `MASTER_ENCRYPTION_KEY` while encrypted Garmin tokens
 exist. Losing that key requires every user to reconnect Garmin.
+
+Moving to a paid instance later is a one-line change to `plan`, plus a managed
+database if you want one; nothing else in the configuration depends on the tier.
