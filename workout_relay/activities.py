@@ -63,8 +63,10 @@ def activity_json(data: dict) -> dict:
 
 
 class ActivityService:
-    def __init__(self, database, vault, gateway):
-        self.database, self.vault, self.gateway = database, vault, gateway
+    def __init__(self, database, tokens, gateway):
+        # `tokens` honours the account's retention choice: a visit-only
+        # connection keeps its Garmin tokens in memory, never in the row.
+        self.database, self.tokens, self.gateway = database, tokens, gateway
         self.limiter = RateLimiter()
 
     def list(self, user_id: str, limit: int = 5, start: int = 0, sport: str | None = None):
@@ -105,7 +107,7 @@ class ActivityService:
                 if connection.status != "connected":
                     raise ActivityError("garmin_reauthentication_required", 409)
                 original_tokens = connection.encrypted_tokens
-                tokens = self.vault.decrypt(original_tokens)
+                tokens = self.tokens.read(connection)
                 db.commit()
                 session = None
                 result = None
@@ -150,7 +152,11 @@ class ActivityService:
                 if error and error.code == "garmin_reauthentication_required":
                     values["status"] = "reauthentication_required"
                 elif session is not None:
-                    values["encrypted_tokens"] = self.vault.encrypt(session.activity_tokens())
+                    # Returns None for a visit-only connection, which keeps its
+                    # refreshed tokens in memory instead of the row.
+                    refreshed = self.tokens.remember(connection, session.activity_tokens())
+                    if refreshed is not None:
+                        values["encrypted_tokens"] = refreshed
                 if values:
                     changed = db.execute(update(GarminConnection).where(
                         GarminConnection.user_id == user_id,

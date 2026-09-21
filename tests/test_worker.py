@@ -14,6 +14,7 @@ from workout_relay.app import UserLockPool, create_app, process_next_submission
 from workout_relay.database import Database, GarminConnection, PlanSubmission, User, WorkoutLink, WorkoutOperation
 from workout_relay.garmin import LiveGarminSession, MockGarminGateway
 from workout_relay.plans import EXAMPLE_PLAN
+from workout_relay.retention import GarminTokens
 from workout_relay.security import TokenVault
 from workout_relay.workouts import content_hash
 from test_garmin import RecoveryGarmin
@@ -41,7 +42,7 @@ def worker_settings(settings, request):
         admin.dispose()
 
 
-def seed(database, vault):
+def seed(database, tokens):
     database.initialize()
     plan = copy.deepcopy(EXAMPLE_PLAN)
     plan["workouts"] = [plan["workouts"][0]]
@@ -49,7 +50,7 @@ def seed(database, vault):
         user = User(email="worker@example.com", password_hash="unused")
         db.add(user)
         db.flush()
-        db.add(GarminConnection(user_id=user.id, encrypted_tokens=vault.encrypt("test-token")))
+        db.add(GarminConnection(user_id=user.id, encrypted_tokens=tokens._vault.encrypt("test-token"), retention="persistent"))
         job = PlanSubmission(user_id=user.id, plan_id=plan["plan_id"], title=plan["title"], content=json.dumps(plan), status="queued")
         db.add(job)
         db.commit()
@@ -81,7 +82,7 @@ class BlockingGateway(MockGarminGateway):
 @pytest.mark.anyio
 async def test_overlapping_startup_cannot_requeue_or_claim_active_job(worker_settings):
     database = Database(worker_settings.database_url)
-    vault = TokenVault(worker_settings.master_encryption_key)
+    vault = GarminTokens(TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes)
     job_id, _, _ = seed(database, vault)
     gateway = BlockingGateway()
     first = asyncio.create_task(process_next_submission(database, vault, gateway, UserLockPool()))
@@ -104,7 +105,7 @@ async def test_overlapping_startup_cannot_requeue_or_claim_active_job(worker_set
 async def test_cancellation_keeps_lock_until_thread_exits(worker_settings):
     database = Database(worker_settings.database_url)
     contender = Database(worker_settings.database_url)
-    vault = TokenVault(worker_settings.master_encryption_key)
+    vault = GarminTokens(TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes)
     job_id, _, _ = seed(database, vault)
     gateway = BlockingGateway()
     first = asyncio.create_task(process_next_submission(database, vault, gateway, UserLockPool()))
@@ -129,7 +130,7 @@ async def test_cancellation_keeps_lock_until_thread_exits(worker_settings):
 @pytest.mark.anyio
 async def test_durable_recovery_after_worker_replacement(worker_settings):
     database = Database(worker_settings.database_url)
-    vault = TokenVault(worker_settings.master_encryption_key)
+    vault = GarminTokens(TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes)
     job_id, user_id, plan = seed(database, vault)
     client = RecoveryGarmin("schedule")
 
@@ -160,7 +161,7 @@ async def test_durable_recovery_after_worker_replacement(worker_settings):
 @pytest.mark.anyio
 async def test_unfinished_operation_cannot_be_overwritten_by_changed_plan(worker_settings):
     database = Database(worker_settings.database_url)
-    vault = TokenVault(worker_settings.master_encryption_key)
+    vault = GarminTokens(TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes)
     _, user_id, plan = seed(database, vault)
     client = RecoveryGarmin("create", accepted=False)
 
@@ -253,7 +254,7 @@ IDENTITY = {"workout_id": "42", "schedule_id": "84", "scheduled_date": "2026-10-
 @pytest.mark.parametrize("stage", ["updating", "updated", "unscheduling", "completed"])
 async def test_changed_payload_replaces_an_interrupted_update(worker_settings, stage):
     database = Database(worker_settings.database_url)
-    vault = TokenVault(worker_settings.master_encryption_key)
+    vault = GarminTokens(TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes)
     _, user_id, plan = seed(database, vault)
     journal(database, user_id, plan["workouts"][0], dict(IDENTITY, stage=stage))
     changed = copy.deepcopy(plan)
@@ -280,7 +281,7 @@ async def test_changed_payload_replaces_an_interrupted_update(worker_settings, s
 ])
 async def test_changed_payload_is_blocked_while_the_outcome_is_unknown(worker_settings, progress):
     database = Database(worker_settings.database_url)
-    vault = TokenVault(worker_settings.master_encryption_key)
+    vault = GarminTokens(TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes)
     _, user_id, plan = seed(database, vault)
     journal(database, user_id, plan["workouts"][0], progress)
     changed = copy.deepcopy(plan)
@@ -299,7 +300,7 @@ async def test_changed_payload_is_blocked_while_the_outcome_is_unknown(worker_se
 @pytest.mark.anyio
 async def test_marker_cleanup_runs_after_the_link_is_committed(worker_settings):
     database = Database(worker_settings.database_url)
-    vault = TokenVault(worker_settings.master_encryption_key)
+    vault = GarminTokens(TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes)
     job_id, _, _ = seed(database, vault)
     client = RecoveryGarmin()
 
@@ -316,7 +317,7 @@ async def test_marker_cleanup_runs_after_the_link_is_committed(worker_settings):
 @pytest.mark.anyio
 async def test_failed_cleanup_keeps_the_upload_successful_and_retries_later(worker_settings):
     database = Database(worker_settings.database_url)
-    vault = TokenVault(worker_settings.master_encryption_key)
+    vault = GarminTokens(TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes)
     job_id, user_id, plan = seed(database, vault)
     client = RecoveryGarmin()
     working_put = client.client.put
@@ -342,7 +343,7 @@ async def test_failed_cleanup_keeps_the_upload_successful_and_retries_later(work
 @pytest.mark.anyio
 async def test_shutdown_drains_through_repeated_cancellation(worker_settings):
     database = Database(worker_settings.database_url)
-    vault = TokenVault(worker_settings.master_encryption_key)
+    vault = GarminTokens(TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes)
     job_id, _, _ = seed(database, vault)
     gateway = BlockingGateway()
     app = create_app(worker_settings, gateway)
@@ -375,7 +376,7 @@ async def test_shutdown_drains_through_repeated_cancellation(worker_settings):
 async def test_completed_remote_write_is_not_forgotten_before_link_commit(worker_settings):
     """The journal, not the link, is the record of where a workout went."""
     database = Database(worker_settings.database_url)
-    vault = TokenVault(worker_settings.master_encryption_key)
+    vault = GarminTokens(TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes)
     job_id, user_id, plan = seed(database, vault)
     journal(database, user_id, plan["workouts"][0], dict(IDENTITY, stage="completed"))
     changed = copy.deepcopy(plan)

@@ -75,6 +75,7 @@ def build_connector(
     notify: Callable[[], None],
     provider: RelayOAuthProvider | None = None,
     activities: ActivityService | None = None,
+    tokens_store=None,
 ) -> FastMCP:
     """Build the connector. `notify` wakes the upload worker after a submission.
 
@@ -199,13 +200,25 @@ def build_connector(
             connection = db.get(GarminConnection, user_id)
         if connection is None:
             return _ok({"connected": False, "status": "disconnected"})
-        return _ok(
-            {
-                "connected": connection.status == "connected",
-                "status": connection.status,
-                "display_name": connection.display_name,
-            }
-        )
+        live = tokens_store.live(connection) if tokens_store else connection.status == "connected"
+        retention = connection.retention or "persistent"
+        status = connection.status
+        if retention == "visit" and connection.status == "connected" and not live:
+            # The person allowed Garmin access for one visit, and it has ended.
+            status = "visit_expired"
+        payload = {
+            "connected": live,
+            "status": status,
+            "display_name": connection.display_name,
+            "retention": retention,
+        }
+        if retention == "visit":
+            payload["note"] = (
+                "This account keeps its Garmin session for one visit only. "
+                "Plans can be delivered only while that window is open; if a "
+                "submission fails, ask the person to reconnect Garmin."
+            )
+        return _ok(payload)
 
     async def read_activity(detail: str | None = None, **query) -> str:
         try:

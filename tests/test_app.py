@@ -49,7 +49,7 @@ async def test_complete_mobile_flow_and_idempotency(settings):
             connected = await client.post(
                 "/api/v1/garmin/connect/start",
                 headers=mutation,
-                json={"email": "garmin@example.com", "password": "garmin-password"},
+                json={"email": "garmin@example.com", "password": "garmin-password", "retention": "persistent"},
             )
             assert connected.json()["status"] == "connected"
 
@@ -116,13 +116,13 @@ async def test_mfa_api_key_language_and_disconnect(settings):
             started = await client.post(
                 "/api/v1/garmin/connect/start",
                 headers=mutation,
-                json={"email": "mfa+runner@example.com", "password": "garmin-password"},
+                json={"email": "mfa+runner@example.com", "password": "garmin-password", "retention": "persistent"},
             )
             assert started.json()["status"] == "mfa_required"
             completed = await client.post(
                 "/api/v1/garmin/connect/complete",
                 headers=mutation,
-                json={"attempt_id": started.json()["attempt_id"], "code": "123456"},
+                json={"attempt_id": started.json()["attempt_id"], "code": "123456", "retention": "persistent"},
             )
             assert completed.json()["status"] == "connected"
 
@@ -160,8 +160,8 @@ async def test_structured_validation_and_bilingual_assets(settings):
             script = await client.get("/static/app.js")
             assert root.status_code == script.status_code == 200
             assert 'id="language"' in root.text
-            assert "Structured workouts" in script.text
-            assert "entraînements structurés" in script.text
+            assert "Less admin. More running." in script.text
+            assert "Moins de gestion. Plus de course." in script.text
             assert "workoutRelayLanguage" in script.text
 
             csrf = await register(client)
@@ -204,7 +204,7 @@ async def test_password_change_and_account_deletion_purge_secrets(settings):
             await client.post(
                 "/api/v1/garmin/connect/start",
                 headers=headers,
-                json={"email": "garmin@example.com", "password": "garmin-password"},
+                json={"email": "garmin@example.com", "password": "garmin-password", "retention": "persistent"},
             )
             changed = await client.post(
                 "/api/v1/me/password",
@@ -290,7 +290,7 @@ async def connect_and_register(client):
     await client.post(
         "/api/v1/garmin/connect/start",
         headers=mutation,
-        json={"email": "garmin@example.com", "password": "garmin-password"},
+        json={"email": "garmin@example.com", "password": "garmin-password", "retention": "persistent"},
     )
     return mutation
 

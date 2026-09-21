@@ -27,6 +27,7 @@ class Settings:
     session_days: int = 30
     plan_retention_days: int = 90
     max_plan_bytes: int = 1_048_576
+    garmin_visit_minutes: int = 120
     connector_enabled: bool = True
     mcp_probe_enabled: bool = False
     mcp_probe_token: str = ""
@@ -57,6 +58,7 @@ class Settings:
             session_days=int(os.getenv("SESSION_DAYS", "30")),
             plan_retention_days=int(os.getenv("PLAN_RETENTION_DAYS", "90")),
             max_plan_bytes=int(os.getenv("MAX_PLAN_BYTES", "1048576")),
+            garmin_visit_minutes=int(os.getenv("GARMIN_VISIT_MINUTES", "120")),
             connector_enabled=_bool("CONNECTOR_ENABLED", True),
             mcp_probe_enabled=_bool("MCP_PROBE_ENABLED", False),
             mcp_probe_token=os.getenv("MCP_PROBE_TOKEN", ""),
@@ -77,6 +79,8 @@ class Settings:
             raise ValueError("PLAN_RETENTION_DAYS must be positive")
         if self.max_plan_bytes < 1:
             raise ValueError("MAX_PLAN_BYTES must be positive")
+        if self.garmin_visit_minutes < 1:
+            raise ValueError("GARMIN_VISIT_MINUTES must be positive")
         if _looks_pooled(self.database_url):
             raise ValueError(
                 "DATABASE_URL points at a transaction pooler, which silently "

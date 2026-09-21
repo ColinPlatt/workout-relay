@@ -5,6 +5,16 @@
 Workout Relay uses Garmin's unofficial Connect endpoints. This is a
 **trust-based hosted integration**, not delegated OAuth.
 
+### Where Garmin tokens live
+
+The person chooses when connecting. Under **this visit only** the encrypted
+tokens are held in process memory with a server-enforced expiry that refreshing
+does not extend, and the database row holds no ciphertext at all; a restart ends
+the session. Under **keep connected** the encrypted tokens are stored until the
+person disconnects. The choice is recorded in the audit log, which is what
+demonstrates consent. Connections made before this release keep the arrangement
+they were made under. [docs/PRIVACY.md](PRIVACY.md) is the user-facing notice.
+
 ### What is stored
 
 - Workout Relay account email and a salted Argon2id password hash.

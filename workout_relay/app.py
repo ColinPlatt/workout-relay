@@ -45,6 +45,7 @@ from .oauth import SCOPES, RelayOAuthProvider, approve, connections, deny, pendi
 from .submissions import PlanRejected, check_plan, queue_plan, recent_submissions
 from .plans import assistant_instructions, example_plan, plan_schema, validate_plan
 from .rate_limit import RateLimiter
+from .retention import RETENTIONS, VISIT, GarminTokens
 from .security import TokenVault, hash_password, hash_token, opaque_token, verify_password
 from .workouts import build_workout, content_hash
 
@@ -77,11 +78,15 @@ class ApiKeyRequest(BaseModel):
 class GarminLogin(BaseModel):
     email: EmailStr
     password: SecretStr = Field(min_length=1, max_length=300)
+    # No default: where Garmin tokens may live is the person's decision, so
+    # the caller has to state it rather than inherit one.
+    retention: str = Field(pattern="^(persistent|visit)$")
 
 
 class GarminMfa(BaseModel):
     attempt_id: str = Field(min_length=10, max_length=100)
     code: SecretStr = Field(min_length=4, max_length=20)
+    retention: str = Field(pattern="^(persistent|visit)$")
 
 
 class PasswordChange(BaseModel):
@@ -117,8 +122,9 @@ def create_app(
     settings.validate()
     database = Database(settings.database_url)
     vault = TokenVault(settings.master_encryption_key)
+    tokens_store = GarminTokens(vault, settings.garmin_visit_minutes)
     gateway = gateway or (LiveGarminGateway() if settings.garmin_mode == "live" else MockGarminGateway())
-    activities = ActivityService(database, vault, gateway)
+    activities = ActivityService(database, tokens_store, gateway)
     limiter = RateLimiter()
     upload_locks = UserLockPool()
     bearer_scheme = HTTPBearer(auto_error=False)
@@ -135,7 +141,9 @@ def create_app(
         )
     connector_provider = RelayOAuthProvider(database, settings.base_url) if connector_possible else None
     connector = (
-        build_connector(settings, database, queue_event.set, connector_provider, activities)
+        build_connector(
+            settings, database, queue_event.set, connector_provider, activities, tokens_store
+        )
         if connector_possible
         else None
     )
@@ -163,7 +171,7 @@ def create_app(
             )
             recovery_db.commit()
         worker = asyncio.create_task(
-            upload_worker(database, vault, gateway, upload_locks, queue_event, worker_stop)
+            upload_worker(database, tokens_store, gateway, upload_locks, queue_event, worker_stop)
         )
         try:
             async with AsyncExitStack() as transports:
@@ -195,6 +203,7 @@ def create_app(
     app.state.settings = settings
     app.state.database = database
     app.state.gateway = gateway
+    app.state.tokens = tokens_store
 
     if connector is not None:
         # The SDK's OAuth endpoints belong at the root: a client discovering
@@ -333,14 +342,18 @@ def create_app(
         )
         return csrf
 
-    def save_connection(db: Session, user_id: str, connected: Connected) -> None:
+    def save_connection(
+        db: Session, user_id: str, connected: Connected, retention: str
+    ) -> None:
+        encrypted, expires_at = tokens_store.start(user_id, connected.token_bundle, retention)
         item = db.get(GarminConnection, user_id)
-        encrypted = vault.encrypt(connected.token_bundle)
         if item:
             item.encrypted_tokens = encrypted
             item.display_name = connected.display_name
             item.status = "connected"
             item.last_validated_at = now()
+            item.retention = retention
+            item.visit_expires_at = expires_at
         else:
             db.add(
                 GarminConnection(
@@ -348,6 +361,8 @@ def create_app(
                     encrypted_tokens=encrypted,
                     display_name=connected.display_name,
                     status="connected",
+                    retention=retention,
+                    visit_expires_at=expires_at,
                 )
             )
 
@@ -636,7 +651,7 @@ def create_app(
     @app.get("/api/v1/garmin/status", tags=["Garmin"])
     async def garmin_status(current: Actor = Depends(actor), db: Session = Depends(db_session)):
         connection = db.get(GarminConnection, current.user.id)
-        return connection_json(connection, settings.garmin_mode)
+        return connection_json(connection, settings.garmin_mode, tokens_store)
 
     @app.post("/api/v1/garmin/connect/start", tags=["Garmin"])
     async def garmin_connect_start(
@@ -667,10 +682,10 @@ def create_app(
                 "attempt_id": result.attempt_id,
                 "expires_in": result.expires_in,
             }
-        save_connection(db, current.user.id, result)
-        database.audit(db, "garmin.connected", current.user.id)
+        save_connection(db, current.user.id, result, body.retention)
+        database.audit(db, "garmin.connected", current.user.id, {"retention": body.retention})
         db.commit()
-        return {"status": "connected", "display_name": result.display_name}
+        return {"status": "connected", "display_name": result.display_name, "retention": body.retention}
 
     @app.post("/api/v1/garmin/connect/complete", tags=["Garmin"])
     async def garmin_connect_complete(
@@ -689,16 +704,17 @@ def create_app(
             raise api_error(400, exc.code)
         finally:
             del code
-        save_connection(db, current.user.id, result)
-        database.audit(db, "garmin.connected", current.user.id)
+        save_connection(db, current.user.id, result, body.retention)
+        database.audit(db, "garmin.connected", current.user.id, {"retention": body.retention})
         db.commit()
-        return {"status": "connected", "display_name": result.display_name}
+        return {"status": "connected", "display_name": result.display_name, "retention": body.retention}
 
     @app.delete("/api/v1/garmin/connection", status_code=204, tags=["Garmin"])
     async def garmin_disconnect(
         current: Actor = Depends(session_mutation_actor), db: Session = Depends(db_session)
     ):
         db.execute(delete(GarminConnection).where(GarminConnection.user_id == current.user.id))
+        tokens_store.forget(current.user.id)
         database.audit(db, "garmin.disconnected", current.user.id)
         db.commit()
 
@@ -784,7 +800,7 @@ def create_app(
 
 async def upload_worker(
     database: Database,
-    vault: TokenVault,
+    tokens_store: GarminTokens,
     gateway: Gateway,
     locks: UserLockPool,
     wake: asyncio.Event,
@@ -794,7 +810,7 @@ async def upload_worker(
         wake.clear()
         while not stop.is_set():
             try:
-                processed = await process_next_submission(database, vault, gateway, locks)
+                processed = await process_next_submission(database, tokens_store, gateway, locks)
             except Exception:
                 # Never let one bad job or a database blip end the worker;
                 # interrupted jobs are requeued at the next startup.
@@ -812,17 +828,17 @@ async def upload_worker(
 
 async def process_next_submission(
     database: Database,
-    vault: TokenVault,
+    tokens_store: GarminTokens,
     gateway: Gateway,
     locks: UserLockPool,
 ) -> bool:
     with database.upload_owner() as assert_owned:
         if assert_owned is None:
             return False
-        return await _process_owned_submission(database, vault, gateway, locks, assert_owned)
+        return await _process_owned_submission(database, tokens_store, gateway, locks, assert_owned)
 
 
-async def _process_owned_submission(database, vault, gateway, locks, assert_owned) -> bool:
+async def _process_owned_submission(database, tokens_store, gateway, locks, assert_owned) -> bool:
     with database.session() as db:
         # Only the exclusive owner may recover interrupted submissions. Startup
         # alone is not evidence that the previous deployment has stopped.
@@ -856,7 +872,7 @@ async def _process_owned_submission(database, vault, gateway, locks, assert_owne
             await process_plan(
                 db,
                 database,
-                vault,
+                tokens_store,
                 gateway,
                 submission.user_id,
                 connection,
@@ -870,7 +886,7 @@ async def _process_owned_submission(database, vault, gateway, locks, assert_owne
 async def process_plan(
     db: Session,
     database: Database,
-    vault: TokenVault,
+    tokens_store: GarminTokens,
     gateway: Gateway,
     user_id: str,
     connection: GarminConnection,
@@ -881,7 +897,7 @@ async def process_plan(
     counts = {"created": 0, "updated": 0, "skipped": 0}
     details = []
     try:
-        tokens = vault.decrypt(connection.encrypted_tokens)
+        tokens = tokens_store.read(connection)
         garmin = None
         for workout_data in plan["workouts"]:
             assert_owned()
@@ -929,7 +945,7 @@ async def process_plan(
                 operation.progress = json.dumps(progress)
             db.commit()
             operation_id = operation.id
-            checkpoint = journal_writer(database, vault, user_id, operation_id, assert_owned)
+            checkpoint = journal_writer(database, tokens_store, user_id, operation_id, assert_owned)
             workout = build_workout(workout_data)
 
             if garmin is None:
@@ -950,7 +966,9 @@ async def process_plan(
             )
             assert_owned()
             tokens = published.token_bundle
-            connection.encrypted_tokens = vault.encrypt(tokens)
+            stored = tokens_store.remember(connection, tokens)
+            if stored is not None:
+                connection.encrypted_tokens = stored
             if link:
                 action = "updated"
                 link.content_hash = digest
@@ -1050,7 +1068,7 @@ def restart_progress(previous: dict) -> dict:
     return carried
 
 
-def journal_writer(database: Database, vault: TokenVault, user_id: str, operation_id: str, assert_owned):
+def journal_writer(database: Database, tokens_store: GarminTokens, user_id: str, operation_id: str, assert_owned):
     """Persist journal progress, and remember the last state written.
 
     Callers must read progress back from `checkpoint.state` rather than the
@@ -1068,7 +1086,9 @@ def journal_writer(database: Database, vault: TokenVault, user_id: str, operatio
             if journal is None or connected is None:
                 raise GarminError("garmin_not_connected")
             journal.progress = json.dumps(state)
-            connected.encrypted_tokens = vault.encrypt(refreshed_tokens)
+            stored = tokens_store.remember(connected, refreshed_tokens)
+            if stored is not None:
+                connected.encrypted_tokens = stored
             journal_db.commit()
         written.clear()
         written.update(state)
@@ -1147,7 +1167,7 @@ CONSENT_TEXT = {
         "activities:read": "read your completed Garmin activities and health/run metrics (including heart rate, pace and distance), without GPS tracks; share these with this assistant",
         "plans:write": "send workout plans to your Garmin calendar",
         "never": "It will never receive your Garmin password, your Garmin session tokens, or your Workout Relay password.",
-        "revoke": "You can revoke this at any time under Settings, Connected assistants.",
+        "revoke": "You can revoke this at any time under Assistants, Connected assistants.",
         "signin": "Sign in to continue",
         "email": "Email",
         "password": "Password",
@@ -1166,7 +1186,7 @@ CONSENT_TEXT = {
         "activities:read": "lire vos activités Garmin terminées et vos mesures de santé/course (dont fréquence cardiaque, allure et distance), sans traces GPS ; les partager avec cet assistant",
         "plans:write": "envoyer des plans d'entraînement vers votre calendrier Garmin",
         "never": "Il ne recevra jamais votre mot de passe Garmin, vos jetons de session Garmin, ni votre mot de passe Workout Relay.",
-        "revoke": "Vous pouvez révoquer cet accès à tout moment dans Réglages, Assistants connectés.",
+        "revoke": "Vous pouvez révoquer cet accès à tout moment dans Assistants, Assistants connectés.",
         "signin": "Connectez-vous pour continuer",
         "email": "E-mail",
         "password": "Mot de passe",
@@ -1180,18 +1200,18 @@ CONSENT_TEXT = {
 }
 
 CONSENT_STYLE = (
-    "body{margin:0;padding:24px 16px;background:#f6f3e9;color:#14372d;"
+    "body{margin:0;padding:24px 16px;background:#f4f6f8;color:#17212b;"
     "font:16px/1.5 ui-sans-serif,system-ui,sans-serif}"
-    "main{max-width:420px;margin:0 auto;background:#fffdf7;border:1px solid #d9d9ce;"
+    "main{max-width:420px;margin:0 auto;background:#ffffff;border:1px solid #dce2e8;"
     "border-radius:18px;padding:24px}"
     "h1{font-size:22px;margin:0 0 16px}ul{padding-left:20px}li{margin-bottom:6px}"
     "label{display:block;font-size:13px;font-weight:700;margin-bottom:12px}"
-    "input{width:100%;min-height:47px;padding:0 13px;font:inherit;border:1px solid #d9d9ce;"
+    "input{width:100%;min-height:47px;padding:0 13px;font:inherit;border:1px solid #dce2e8;"
     "border-radius:10px;box-sizing:border-box;margin-top:6px}"
     "button{min-height:47px;width:100%;font:inherit;font-weight:800;border-radius:10px;"
     "border:1px solid transparent;cursor:pointer;margin-top:10px}"
-    ".primary{background:#087f5b;color:#fff}.ghost{background:transparent;border-color:#d9d9ce;color:#14372d}"
-    ".muted{color:#68766f;font-size:13px}.error{color:#ad352d;font-size:13px}"
+    ".primary{background:#0076bb;color:#fff}.ghost{background:transparent;border-color:#dce2e8;color:#17212b}"
+    ".muted{color:#596775;font-size:13px}.error{color:#ad352d;font-size:13px}"
 )
 
 
@@ -1297,14 +1317,25 @@ def api_key_json(item: ApiKey) -> dict:
     }
 
 
-def connection_json(item: GarminConnection | None, mode: str) -> dict:
+def connection_json(
+    item: GarminConnection | None, mode: str, tokens_store: GarminTokens | None = None
+) -> dict:
     if not item:
-        return {"connected": False, "status": "disconnected", "mode": mode}
+        return {"connected": False, "status": "disconnected", "mode": mode, "retention": None}
+    retention = item.retention or "persistent"
+    live = tokens_store.live(item) if tokens_store else item.status == "connected"
+    status = item.status
+    if retention == VISIT and item.status == "connected" and not live:
+        # The window the person agreed to has closed; say so plainly rather
+        # than reporting a connection that cannot reach Garmin.
+        status = "visit_expired"
     return {
-        "connected": item.status == "connected",
-        "status": item.status,
+        "connected": live,
+        "status": status,
         "display_name": item.display_name,
         "last_validated_at": iso(item.last_validated_at),
+        "retention": retention,
+        "visit_expires_at": iso(tokens_store.expires_at(item)) if tokens_store else None,
         "mode": mode,
     }
 

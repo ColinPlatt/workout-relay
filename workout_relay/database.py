@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, create_engine, delete, event, select
+from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, create_engine, delete, event, inspect, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
 
 from .security import hash_token
@@ -57,7 +57,10 @@ class ApiKey(Base):
 class GarminConnection(Base):
     __tablename__ = "garmin_connections"
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    # Empty for a visit-only connection: those tokens are never written down.
     encrypted_tokens: Mapped[str] = mapped_column(Text)
+    retention: Mapped[str] = mapped_column(String(20), default="persistent")
+    visit_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     display_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     status: Mapped[str] = mapped_column(String(30), default="connected")
     last_validated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
@@ -193,6 +196,7 @@ class Database:
             if self.engine.dialect.name == "postgresql":
                 connection.exec_driver_sql("SELECT pg_advisory_xact_lock(78234602)")
             Base.metadata.create_all(connection)
+            _add_missing_columns(connection)
 
     @contextmanager
     def upload_owner(self):
@@ -280,6 +284,32 @@ class Database:
 
     def purge_session(self, db: Session, token: str) -> None:
         db.execute(delete(BrowserSession).where(BrowserSession.token_hash == hash_token(token)))
+
+
+# create_all() creates missing tables but never alters existing ones, so
+# columns added after a release need this. Each entry is additive and
+# nullable, which keeps an older process running against the new schema.
+ADDED_COLUMNS = (
+    ("garmin_connections", "retention", "VARCHAR(20)", "'persistent'"),
+    ("garmin_connections", "visit_expires_at", "TIMESTAMP WITH TIME ZONE", None),
+)
+
+
+def _add_missing_columns(connection) -> None:
+    inspector = inspect(connection)
+    existing = set(inspector.get_table_names())
+    sqlite = connection.dialect.name == "sqlite"
+    for table, column, column_type, default in ADDED_COLUMNS:
+        if table not in existing:
+            continue
+        if column in {item["name"] for item in inspector.get_columns(table)}:
+            continue
+        if sqlite and column_type.startswith("TIMESTAMP"):
+            column_type = "DATETIME"
+        clause = f"ALTER TABLE {table} ADD COLUMN {column} {column_type}"
+        if default is not None:
+            clause += f" DEFAULT {default}"
+        connection.exec_driver_sql(clause)
 
 
 def _as_utc(value: datetime) -> datetime:

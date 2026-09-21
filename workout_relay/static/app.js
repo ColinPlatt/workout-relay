@@ -1,21 +1,25 @@
 const translations = {
   en: {
+    pastePlan: "Or paste a plan", helpAssistant: "Help my assistant create a plan",
+    copyHelp: "Copy these instructions into your chat, then ask for a workout plan. No passwords or keys are included.",
+    connectionSetup: "Connection details", advancedAccess: "Advanced: API access",
+    fileReady: "{name} is ready to send.", fileReadFailed: "Could not read this file. Try again or paste the plan.",
     languageLabel: "Language", logout: "Log out", heroEyebrow: "Your plan. Your calendar.",
-    heroTitle: "Structured workouts, sent from your phone.",
-    heroCopy: "Upload a carefully validated JSON plan or connect your training assistant, then send every session to Garmin Connect.",
+    heroTitle: "Less admin. More running.",
+    heroCopy: "Your training plan, straight to Garmin. Bring a plan or connect your assistant — we’ll take care of the transfer.",
     trustLine: "Garmin passwords and MFA codes are never stored. Encrypted session tokens keep you connected.",
     login: "Log in", createAccount: "Create account", accountAccess: "Account access", email: "Email",
     password: "Password", passwordHint: "Use at least 12 characters. This is your Workout Relay password.",
-    dashboard: "Dashboard", dashboardTitle: "Plan the work. Send it once.", checkingGarmin: "Checking Garmin…",
-    tapToManage: "Tap to manage", upload: "Upload", formatGuide: "Plan format", automation: "Automation", settings: "Settings",
-    addPlan: "Add a workout plan", chooseJson: "Choose JSON",
+    dashboard: "Dashboard", dashboardTitle: "Your next session starts here.", checkingGarmin: "Checking Garmin…",
+    tapToManage: "Manage connection", upload: "Plans", formatGuide: "Plan format", automation: "Assistants", settings: "Account",
+    addPlan: "Add a workout plan", chooseJson: "Choose a plan file",
     planJson: "Plan JSON", refresh: "Refresh", close: "Close", apiKeyName: "API key name",
-    addPlanHelp: "Paste a plan or select a JSON file. Validate it before sending anything to Garmin.",
-    jsonPlaceholder: '{ "schema_version": 1, "plan_id": "2026-W40", ... }', loadExample: "Load example",
-    validate: "Validate", sendToGarmin: "Send to Garmin", recent: "Recent", planHistory: "Plan history",
+    addPlanHelp: "Choose the JSON file from your assistant, or paste its contents below. We check your plan before sending.",
+    jsonPlaceholder: '{ "schema_version": 1, "plan_id": "2026-W40", ... }', loadExample: "Try an example",
+    validate: "Check plan", sendToGarmin: "Send to Garmin", recent: "Recent", planHistory: "Plan history",
     noPlans: "No plans submitted yet.", guideTitle: "A predictable format for reliable workouts",
     guideIntro: "Workout Relay does not ask an AI to interpret your plan at upload time. Every duration, target, repeat, and date is explicit, validated, and deterministic.",
-    copyAiInstructions: "Copy AI instructions", viewExample: "View complete example", viewSchema: "View JSON Schema", requiredStructure: "Required structure",
+    copyAiInstructions: "Copy instructions", viewExample: "View complete example", viewSchema: "View JSON Schema", requiredStructure: "Required structure",
     structureHelp: "A plan contains one or more dated running workouts. Unknown fields are rejected so mistakes are visible.",
     durations: "Durations", durationHelp: "Time is always seconds. Distance is always metres. Values must be positive whole numbers.",
     targets: "Targets", targetHelp: "Use one target per step. Pace is minutes per kilometre; slow must genuinely be slower than fast.",
@@ -27,7 +31,7 @@ const translations = {
     assistantHelp: "For a custom GPT or your own scripts, create a revocable bearer key. Add it only to the tool's protected API-authentication field—never paste it into a chat. The full key is shown once. Claude cannot use a bearer key: connect it with the connector above.",
     keyNamePlaceholder: "My training assistant", createKey: "Create key", apiWorkflow: "Recommended API workflow",
     connectAssistant: "Connect an assistant", connectorAddress: "Connector address", copyAddress: "Copy address",
-    connectAssistantHelp: "Add this address as a connector in Claude or ChatGPT. You sign in here once and approve; the assistant never sees your Garmin or Workout Relay password.",
+    connectAssistantHelp: "Let your assistant send plans and, with your permission, review past runs. Your passwords stay private.",
     inClaude: "In Claude", inChatgpt: "In ChatGPT",
     claudeStep1: "Open Settings, then Connectors, and choose Add custom connector.",
     claudeStep2: "Paste the address above and add it. Leave the advanced OAuth fields empty.",
@@ -44,6 +48,29 @@ const translations = {
     apiStep3: "POST it to /api/v1/plans/validate.", apiStep4: "Fix every structured validation error.",
     apiStep5: "POST the valid plan to /api/v1/plans.", openApiDocs: "Open interactive API documentation ↗",
     apiStep6: "Poll the returned submission URL until it is completed or failed.",
+    retentionQuestion: "How long may we keep your Garmin session?",
+    retentionVisit: "This visit only",
+    retentionVisitHelp: "Session tokens stay in memory and expire automatically. Nothing Garmin-related is written to the database. You sign in to Garmin again next time, and assistants cannot send plans once the window closes.",
+    retentionKeep: "Keep Garmin connected",
+    retentionKeepHelp: "Encrypted session tokens are stored until you disconnect, so uploads work later and assistants can send plans unattended.",
+    retentionVisitActive: "This visit only. The session expires at {when}, and nothing Garmin-related is stored.",
+    retentionKeepActive: "Kept connected. Encrypted session tokens are stored until you disconnect.",
+    retentionChange: "To change this, disconnect and connect again.",
+    privacy: "Privacy", privacyTitle: "What is stored, and why", readPrivacy: "What is stored", gotIt: "Got it",
+    privacyNoteText: "Workout Relay stores only what it needs to work: your account email, a password hash, and the plans you send. Cookies here are strictly necessary for signing in, so there is nothing to opt into. You choose where your Garmin session is kept when you connect it.",
+    privacyKeptTitle: "Kept", privacyNeverTitle: "Never kept", privacyControlTitle: "Your controls",
+    privacyKeptAccount: "Your account email and a password hash, so you can sign in.",
+    privacyKeptPlans: "Plans you send and their results, deleted automatically after the retention period.",
+    privacyKeptGarmin: "Encrypted Garmin session tokens — only if you chose “Keep Garmin connected”.",
+    privacyKeptAssistants: "Which assistants you connected, and when they last acted.",
+    privacyNeverPassword: "Your Garmin email and password, or MFA codes.",
+    privacyNeverPlain: "Garmin tokens in readable form, or in the database at all under “This visit only”.",
+    privacyNeverTracking: "Analytics, advertising or third-party tracking of any kind.",
+    privacyControlSwitch: "Disconnect Garmin at any time, or reconnect to change where the session is kept.",
+    privacyControlAssistants: "Disconnect an assistant under Assistants; it loses access immediately.",
+    privacyControlDelete: "Delete your account under Account, which removes everything above.",
+    privacyCookies: "Cookies: one signed-in session cookie and one CSRF cookie, both strictly necessary, plus your language choice stored in this browser. No consent banner is needed for those, and nothing else is set.",
+    error_garmin_visit_expired: "Your Garmin session has expired for this visit. Connect Garmin again to continue.",
     connectGarmin: "Connect Garmin", garminConnected: "Garmin connected",
     connectedHelp: "Encrypted Garmin session tokens are stored so you do not need to sign in for every upload.",
     disconnectGarmin: "Disconnect and delete tokens", beforeConnecting: "Before connecting",
@@ -94,22 +121,26 @@ const translations = {
     expanded_steps: "{path}: repeat expansion creates {count} steps; the maximum is {maximum}."
   },
   fr: {
+    pastePlan: "Ou coller un plan", helpAssistant: "Aider mon assistant à créer un plan",
+    copyHelp: "Collez ces instructions dans votre conversation, puis demandez un plan. Aucun mot de passe ni aucune clé ne sont inclus.",
+    connectionSetup: "Détails de connexion", advancedAccess: "Avancé : accès API",
+    fileReady: "{name} est prêt à être envoyé.", fileReadFailed: "Impossible de lire ce fichier. Réessayez ou collez le plan.",
     languageLabel: "Langue", logout: "Se déconnecter", heroEyebrow: "Votre plan. Votre calendrier.",
-    heroTitle: "Des entraînements structurés, envoyés depuis votre téléphone.",
-    heroCopy: "Importez un plan JSON soigneusement validé ou connectez votre assistant d'entraînement, puis envoyez chaque séance vers Garmin Connect.",
+    heroTitle: "Moins de gestion. Plus de course.",
+    heroCopy: "Votre plan d'entraînement, directement sur Garmin. Importez un plan ou connectez votre assistant : nous nous chargeons du transfert.",
     trustLine: "Les mots de passe Garmin et codes MFA ne sont jamais conservés. Des jetons de session chiffrés maintiennent la connexion.",
     login: "Se connecter", createAccount: "Créer un compte", accountAccess: "Accès au compte", email: "E-mail",
     password: "Mot de passe", passwordHint: "Utilisez au moins 12 caractères. Il s'agit de votre mot de passe Workout Relay.",
-    dashboard: "Tableau de bord", dashboardTitle: "Planifiez. Envoyez une seule fois.", checkingGarmin: "Vérification de Garmin…",
-    tapToManage: "Touchez pour gérer", upload: "Importer", formatGuide: "Format du plan", automation: "Automatisation", settings: "Réglages",
-    addPlan: "Ajouter un plan d'entraînement", chooseJson: "Choisir un JSON",
+    dashboard: "Tableau de bord", dashboardTitle: "Votre prochaine séance commence ici.", checkingGarmin: "Vérification de Garmin…",
+    tapToManage: "Gérer la connexion", upload: "Plans", formatGuide: "Format du plan", automation: "Assistants", settings: "Compte",
+    addPlan: "Ajouter un plan d'entraînement", chooseJson: "Choisir un fichier",
     planJson: "JSON du plan", refresh: "Actualiser", close: "Fermer", apiKeyName: "Nom de la clé API",
-    addPlanHelp: "Collez un plan ou sélectionnez un fichier JSON. Validez-le avant tout envoi vers Garmin.",
-    jsonPlaceholder: '{ "schema_version": 1, "plan_id": "2026-W40", ... }', loadExample: "Charger l'exemple",
-    validate: "Valider", sendToGarmin: "Envoyer vers Garmin", recent: "Récent", planHistory: "Historique des plans",
+    addPlanHelp: "Choisissez le fichier JSON de votre assistant ou collez son contenu ci-dessous. Nous vérifions le plan avant l'envoi.",
+    jsonPlaceholder: '{ "schema_version": 1, "plan_id": "2026-W40", ... }', loadExample: "Essayer un exemple",
+    validate: "Vérifier", sendToGarmin: "Envoyer vers Garmin", recent: "Récent", planHistory: "Historique des plans",
     noPlans: "Aucun plan envoyé pour le moment.", guideTitle: "Un format prévisible pour des séances fiables",
     guideIntro: "Workout Relay ne demande pas à une IA d'interpréter votre plan lors de l'import. Chaque durée, cible, répétition et date est explicite, validée et déterministe.",
-    copyAiInstructions: "Copier les instructions IA", viewExample: "Voir l'exemple complet", viewSchema: "Voir le schéma JSON", requiredStructure: "Structure obligatoire",
+    copyAiInstructions: "Copier les instructions", viewExample: "Voir l'exemple complet", viewSchema: "Voir le schéma JSON", requiredStructure: "Structure obligatoire",
     structureHelp: "Un plan contient une ou plusieurs séances de course datées. Les champs inconnus sont refusés afin de rendre les erreurs visibles.",
     durations: "Durées", durationHelp: "Le temps est toujours en secondes. La distance est toujours en mètres. Les valeurs sont des nombres entiers positifs.",
     targets: "Cibles", targetHelp: "Utilisez une cible par étape. L'allure est en minutes par kilomètre ; slow doit réellement être plus lent que fast.",
@@ -121,7 +152,7 @@ const translations = {
     assistantHelp: "Pour un GPT personnalisé ou vos propres scripts, créez une clé révocable. Ajoutez-la uniquement au champ d'authentification API protégé de l'outil, jamais dans une conversation. La clé complète n'est affichée qu'une fois. Claude ne peut pas utiliser de clé : connectez-le avec le connecteur ci-dessus.",
     keyNamePlaceholder: "Mon assistant d'entraînement", createKey: "Créer une clé", apiWorkflow: "Flux API recommandé",
     connectAssistant: "Connecter un assistant", connectorAddress: "Adresse du connecteur", copyAddress: "Copier l'adresse",
-    connectAssistantHelp: "Ajoutez cette adresse comme connecteur dans Claude ou ChatGPT. Vous vous connectez ici une fois et vous approuvez ; l'assistant ne voit jamais vos mots de passe Garmin ou Workout Relay.",
+    connectAssistantHelp: "Votre assistant peut envoyer vos plans et, avec votre accord, consulter vos courses passées. Vos mots de passe restent privés.",
     inClaude: "Dans Claude", inChatgpt: "Dans ChatGPT",
     claudeStep1: "Ouvrez Réglages, puis Connecteurs, et choisissez Ajouter un connecteur personnalisé.",
     claudeStep2: "Collez l'adresse ci-dessus et ajoutez-la. Laissez vides les champs OAuth avancés.",
@@ -138,6 +169,29 @@ const translations = {
     apiStep3: "L'envoyer à /api/v1/plans/validate.", apiStep4: "Corriger chaque erreur de validation structurée.",
     apiStep5: "Envoyer le plan valide à /api/v1/plans.", openApiDocs: "Ouvrir la documentation API interactive ↗",
     apiStep6: "Interroger l'URL de soumission renvoyée jusqu'au statut completed ou failed.",
+    retentionQuestion: "Combien de temps pouvons-nous conserver votre session Garmin ?",
+    retentionVisit: "Cette visite uniquement",
+    retentionVisitHelp: "Les jetons restent en mémoire et expirent automatiquement. Rien concernant Garmin n'est écrit en base. Vous vous reconnecterez à Garmin la prochaine fois, et les assistants ne pourront plus envoyer de plans une fois la fenêtre fermée.",
+    retentionKeep: "Rester connecté à Garmin",
+    retentionKeepHelp: "Les jetons chiffrés sont conservés jusqu'à déconnexion : les imports fonctionnent plus tard et les assistants peuvent envoyer des plans sans vous.",
+    retentionVisitActive: "Cette visite uniquement. La session expire à {when} et rien concernant Garmin n'est conservé.",
+    retentionKeepActive: "Connexion conservée. Les jetons chiffrés sont conservés jusqu'à votre déconnexion.",
+    retentionChange: "Pour changer, déconnectez-vous puis reconnectez-vous.",
+    privacy: "Confidentialité", privacyTitle: "Ce qui est conservé, et pourquoi", readPrivacy: "Ce qui est conservé", gotIt: "J'ai compris",
+    privacyNoteText: "Workout Relay ne conserve que le nécessaire : l'e-mail du compte, une empreinte du mot de passe et les plans envoyés. Les cookies utilisés sont strictement nécessaires à la connexion : il n'y a rien à accepter. Vous choisissez où votre session Garmin est conservée au moment de la connecter.",
+    privacyKeptTitle: "Conservé", privacyNeverTitle: "Jamais conservé", privacyControlTitle: "Vos contrôles",
+    privacyKeptAccount: "L'e-mail du compte et une empreinte du mot de passe, pour vous connecter.",
+    privacyKeptPlans: "Les plans envoyés et leurs résultats, supprimés automatiquement après la période de conservation.",
+    privacyKeptGarmin: "Les jetons de session Garmin chiffrés — uniquement si vous avez choisi « Rester connecté à Garmin ».",
+    privacyKeptAssistants: "Les assistants connectés et la date de leur dernière action.",
+    privacyNeverPassword: "Votre e-mail et mot de passe Garmin, ni les codes MFA.",
+    privacyNeverPlain: "Les jetons Garmin en clair, ni en base sous « Cette visite uniquement ».",
+    privacyNeverTracking: "Aucune analyse d'audience, publicité ou traceur tiers.",
+    privacyControlSwitch: "Déconnectez Garmin à tout moment, ou reconnectez-vous pour changer la conservation.",
+    privacyControlAssistants: "Déconnectez un assistant dans Assistants ; il perd l'accès immédiatement.",
+    privacyControlDelete: "Supprimez votre compte dans Compte, ce qui efface tout ce qui précède.",
+    privacyCookies: "Cookies : un cookie de session et un cookie CSRF, tous deux strictement nécessaires, plus votre choix de langue conservé dans ce navigateur. Aucune bannière de consentement n'est requise pour cela, et rien d'autre n'est déposé.",
+    error_garmin_visit_expired: "Votre session Garmin a expiré pour cette visite. Reconnectez Garmin pour continuer.",
     connectGarmin: "Connecter Garmin", garminConnected: "Garmin connecté",
     connectedHelp: "Des jetons de session Garmin chiffrés sont conservés afin d'éviter une reconnexion à chaque import.",
     disconnectGarmin: "Déconnecter et supprimer les jetons", beforeConnecting: "Avant la connexion",
@@ -295,6 +349,12 @@ async function openGarminDialog() {
   $("#garmin-login-form").classList.toggle("hidden", status.connected);
   $("#garmin-mfa-form").classList.add("hidden");
   $("#garmin-name").textContent = status.display_name || "";
+  const expiry = status.visit_expires_at
+    ? new Intl.DateTimeFormat(state.language, { timeStyle: "short" }).format(new Date(status.visit_expires_at))
+    : "";
+  $("#garmin-retention").textContent = status.retention === "persistent"
+    ? `${t("retentionKeepActive")} ${t("retentionChange")}`
+    : `${t("retentionVisitActive", { when: expiry })} ${t("retentionChange")}`;
   $("#garmin-dialog").showModal();
 }
 
@@ -402,7 +462,9 @@ $("#close-garmin").addEventListener("click", () => $("#garmin-dialog").close());
 $("#garmin-login-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.currentTarget.querySelector("button[type=submit]"); setBusy(button, true); $("#garmin-login-error").textContent = "";
   try {
-    const result = await api("/api/v1/garmin/connect/start", { method: "POST", body: JSON.stringify({ email: $("#garmin-email").value, password: $("#garmin-password").value }) });
+    const retention = ($$('input[name="retention"]').find((option) => option.checked) || {}).value || "visit";
+    state.retention = retention;
+    const result = await api("/api/v1/garmin/connect/start", { method: "POST", body: JSON.stringify({ email: $("#garmin-email").value, password: $("#garmin-password").value, retention }) });
     $("#garmin-password").value = "";
     if (result.status === "mfa_required") {
       state.mfaAttempt = result.attempt_id; $("#garmin-login-form").classList.add("hidden"); $("#garmin-mfa-form").classList.remove("hidden"); showToast(t("mfaRequired"));
@@ -413,7 +475,7 @@ $("#garmin-login-form").addEventListener("submit", async (event) => {
 $("#garmin-mfa-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.currentTarget.querySelector("button[type=submit]"); setBusy(button, true); $("#garmin-mfa-error").textContent = "";
   try {
-    await api("/api/v1/garmin/connect/complete", { method: "POST", body: JSON.stringify({ attempt_id: state.mfaAttempt, code: $("#garmin-mfa").value }) });
+    await api("/api/v1/garmin/connect/complete", { method: "POST", body: JSON.stringify({ attempt_id: state.mfaAttempt, code: $("#garmin-mfa").value, retention: state.retention || "visit" }) });
     $("#garmin-mfa").value = ""; state.mfaAttempt = null; showToast(t("connected")); $("#garmin-dialog").close(); await loadGarmin();
   } catch (error) { $("#garmin-mfa").value = ""; $("#garmin-mfa-error").textContent = errorText(error); }
   finally { setBusy(button, false); }
@@ -423,8 +485,30 @@ $("#disconnect-garmin").addEventListener("click", async () => {
   await api("/api/v1/garmin/connection", { method: "DELETE" }); $("#garmin-dialog").close(); showToast(t("disconnected")); await loadGarmin();
 });
 
-$("#plan-file").addEventListener("change", async (event) => { const file = event.target.files[0]; if (file) $("#plan-json").value = await file.text(); });
-$("#load-example").addEventListener("click", async () => { $("#plan-json").value = JSON.stringify(await api("/api/v1/plan-example"), null, 2); showToast(t("exampleLoaded")); });
+$("#plan-file").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    $("#plan-json").value = await file.text();
+    $("#selected-plan").textContent = t("fileReady", { name: file.name });
+    $("#selected-plan").classList.remove("hidden");
+    $("#plan-result").classList.add("hidden");
+  } catch (_) { showToast(t("fileReadFailed")); }
+});
+$("#plan-json").addEventListener("input", () => {
+  $("#selected-plan").classList.add("hidden");
+  $("#plan-result").classList.add("hidden");
+});
+$("#load-example").addEventListener("click", async () => {
+  try {
+    $("#plan-json").value = JSON.stringify(await api("/api/v1/plan-example"), null, 2);
+    $("#plan-editor").open = true;
+    $("#selected-plan").classList.add("hidden");
+    $("#plan-result").classList.add("hidden");
+    $("#plan-json").focus();
+    showToast(t("exampleLoaded"));
+  } catch (error) { showToast(errorText(error)); }
+});
 $("#validate-plan").addEventListener("click", async (event) => {
   const button = event.currentTarget;
   setBusy(button, true);
@@ -499,8 +583,23 @@ $("#delete-account-form").addEventListener("submit", async (event) => {
   finally { setBusy(button, false); }
 });
 
+$("#open-privacy").addEventListener("click", () => $("#privacy-dialog").showModal());
+$("#close-privacy").addEventListener("click", () => $("#privacy-dialog").close());
+$("#privacy-note-more").addEventListener("click", () => $("#privacy-dialog").showModal());
+$("#privacy-note-ok").addEventListener("click", () => {
+  $("#privacy-note").classList.add("hidden");
+  try { localStorage.setItem("workoutRelayPrivacyNote", "seen"); } catch (_) { /* private browsing */ }
+});
+
+function showPrivacyNote() {
+  let seen = false;
+  try { seen = localStorage.getItem("workoutRelayPrivacyNote") === "seen"; } catch (_) { seen = false; }
+  if (!seen) $("#privacy-note").classList.remove("hidden");
+}
+
 (async function boot() {
   applyLanguage(chooseInitialLanguage());
+  showPrivacyNote();
   try {
     const user = await api("/api/v1/me");
     if (!localStorage.getItem("workoutRelayLanguage") && user.preferred_language) applyLanguage(user.preferred_language);

@@ -16,17 +16,20 @@ or submit it through a revocable API key.
    also has a permanent language selector.
 2. Tap the Garmin status card, read the trust notice, and enter the Garmin
    login once. If Garmin asks for MFA, enter the code on the same page.
-3. In **Upload**, choose a JSON file from the phone or paste its contents. Tap
-   **Validate**, correct any field-specific errors, then tap **Send to Garmin**.
+3. In **Plans**, choose a JSON file from the phone or expand **Or paste a plan**.
+   Tap **Send to Garmin**; validation runs before anything is uploaded. Use
+   **Check plan** for an optional preview of any errors.
 4. The request is safely queued. The page may be closed; **Plan history** shows
    whether it completed or failed when the user returns.
-5. For ChatGPT, Claude, or another automation, create a revocable key under
-   **Automation**, copy the bilingual AI instructions, and configure the key in
-   the assistant's protected API-auth/secret setting—not in an ordinary chat.
-   The Garmin password is never shared with the assistant.
+5. Under **Assistants**, expand **Connection details** to copy the connector
+   address and approve access. For a manual chat, expand **Help my assistant
+   create a plan** on the Plans screen and copy the instructions into the chat.
+   API keys remain available under **Advanced: API access**; never paste a key
+   into a chat. The Garmin password is never shared with the assistant.
 
-The **Plan format** tab includes a complete example, JSON Schema, units, target
-rules, repeat limits, and copy-ready assistant instructions.
+Format rules, the example and JSON Schema remain available through the API
+and MCP tool metadata. The website links to these machine-readable descriptions
+in its head rather than displaying an entire technical manual to users.
 
 ## Local development
 
@@ -43,6 +46,15 @@ language and provides a persistent language override.
 
 Use `GARMIN_MODE=mock` for local development. Real Garmin authentication is only
 enabled with `GARMIN_MODE=live`.
+
+## Privacy
+
+Garmin credentials are never stored. When connecting Garmin the person chooses
+whether the session may be kept: **this visit only**, held in memory with a
+server-enforced expiry and never written to the database, or **keep connected**,
+encrypted and stored until they disconnect. Cookies are limited to a session and
+a CSRF cookie, both strictly necessary, so there is no consent banner to click
+through. See [PRIVACY.md](docs/PRIVACY.md).
 
 ## Tests
 
@@ -61,7 +73,7 @@ address in Claude or ChatGPT, signs in once and approves, and the assistant can
 then validate and send plans, or read completed activities with separately
 approved `activities:read` permission. No key is shared, and Garmin credentials stay on
 the server. Connected assistants are listed, with one-tap revocation, under
-**Automation**.
+**Assistants**.
 
 The optional MCP file-delivery probe is documented in
 [MCP_PROBE.md](docs/MCP_PROBE.md). It is off by default, serves synthetic
@@ -80,7 +92,7 @@ files; completed-activity reading currently returns JSON metrics, not files.
   are `null`. No GPS tracks, FIT/TCX files, or lap/time-series data are returned.
 - Existing assistant connections need fresh consent: remove and re-add the
   connector, sign in, and approve activity access. A token refresh cannot add
-  permission. Revoke the old connection under **Automation** if still listed.
+  permission. Revoke the old connection under **Assistants** if still listed.
 
 Les connexions existantes ne reçoivent aucune autorisation supplémentaire.
 Supprimez puis ajoutez à nouveau le connecteur, connectez-vous et approuvez

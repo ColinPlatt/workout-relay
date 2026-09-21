@@ -41,7 +41,7 @@ async def connect_garmin(client, csrf):
     await client.post(
         "/api/v1/garmin/connect/start",
         headers={"X-CSRF-Token": csrf},
-        json={"email": "garmin@example.com", "password": "garmin-password"},
+        json={"email": "garmin@example.com", "password": "garmin-password", "retention": "persistent"},
     )
 
 
