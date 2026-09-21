@@ -155,6 +155,54 @@ def read_fit_header(data: bytes) -> dict:
     return {"protocol": protocol, "profile": profile, "data_size": data_size}
 
 
+def count_fit_records(data: bytes) -> int | None:
+    """Count record messages by walking the file, not by trusting metadata.
+
+    Returns None when the file cannot be walked, so a probe can say "unknown"
+    instead of reporting a number it did not derive from the bytes.
+    """
+    try:
+        header_size = data[0]
+        data_size = struct.unpack("<I", data[4:8])[0]
+        position, end = header_size, header_size + data_size
+        definitions: dict[int, tuple[int, int]] = {}
+        records = 0
+        while position < end:
+            header = data[position]
+            position += 1
+            if header & 0x80:  # compressed timestamp header
+                local = (header >> 5) & 0x03
+                global_number, size = definitions[local]
+                position += size
+                records += global_number == 20
+                continue
+            local = header & 0x0F
+            if header & 0x40:  # definition message
+                architecture = data[position + 1]
+                endian = ">" if architecture else "<"
+                global_number = struct.unpack(f"{endian}H", data[position + 2 : position + 4])[0]
+                count = data[position + 4]
+                position += 5
+                size = 0
+                for _ in range(count):
+                    size += data[position + 1]
+                    position += 3
+                if header & 0x20:  # developer field definitions
+                    developer_count = data[position]
+                    position += 1
+                    for _ in range(developer_count):
+                        size += data[position + 1]
+                        position += 3
+                definitions[local] = (global_number, size)
+                continue
+            global_number, size = definitions[local]
+            position += size
+            records += global_number == 20
+        return records
+    except (IndexError, KeyError, struct.error):
+        return None
+
+
 def tcx_text(sample: Sample) -> str:
     """Build a Garmin-shaped TCX document with one lap of trackpoints."""
     step = max(1, sample.duration_sec // sample.points)

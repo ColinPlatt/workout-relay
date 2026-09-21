@@ -29,11 +29,17 @@ from pydantic import AnyUrl
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from .samples import SAMPLES, read_fit_header, sample_by_id, sample_file
+from mcp.types import TextContent
+
+from .samples import SAMPLES, count_fit_records, read_fit_header, sample_by_id, sample_file
 
 logger = logging.getLogger(__name__)
 
 FORMATS = {"fit": "application/vnd.ant.fit", "tcx": "application/vnd.garmin.tcx+xml"}
+# Claude rejected an embedded resource typed application/vnd.ant.fit as
+# unsupported. These modes isolate the cause: is it the custom MIME type, the
+# blob resource itself, or binary content in any form?
+DELIVERIES = ("resource", "octet", "text", "json")
 
 
 def activity_json(sample) -> dict:
@@ -48,7 +54,7 @@ def activity_json(sample) -> dict:
     }
 
 
-def file_resource(sample, file_format: str, directory: Path | None):
+def file_resource(sample, file_format: str, directory: Path | None, mime: str | None = None):
     """Return the sample as MCP resource contents.
 
     TCX is XML and travels as text; FIT is binary and travels base64-encoded in
@@ -56,11 +62,10 @@ def file_resource(sample, file_format: str, directory: Path | None):
     """
     data = sample_file(sample, file_format, directory)
     uri = AnyUrl(f"activity://{sample.activity_id}.{file_format}")
+    mime = mime or FORMATS[file_format]
     if file_format == "tcx":
-        return TextResourceContents(uri=uri, mimeType=FORMATS[file_format], text=data.decode())
-    return BlobResourceContents(
-        uri=uri, mimeType=FORMATS[file_format], blob=base64.b64encode(data).decode()
-    )
+        return TextResourceContents(uri=uri, mimeType=mime, text=data.decode())
+    return BlobResourceContents(uri=uri, mimeType=mime, blob=base64.b64encode(data).decode())
 
 
 def allowed_hosts(base_url: str, extra: str = "") -> list[str]:
@@ -111,25 +116,53 @@ def build_server(
 
     @server.tool(
         description=(
-            "Download one sample activity file. file_format is 'fit' (binary, "
-            "returned base64-encoded) or 'tcx' (XML text). Report whether you "
-            "can read the contents, and summarise what you find."
+            "Download one sample activity file. file_format is 'fit' or 'tcx'. "
+            "delivery selects how the bytes are packaged: 'resource' is an "
+            "embedded resource with the format's own MIME type, 'octet' the "
+            "same but typed application/octet-stream, 'text' a plain text "
+            "block containing base64, and 'json' a JSON object whose data "
+            "field holds base64. If one delivery fails, try the others and "
+            "report exactly which ones you could decode."
         )
     )
-    def get_activity_file(activity_id: str, file_format: str = "fit") -> EmbeddedResource:
+    def get_activity_file(
+        activity_id: str, file_format: str = "fit", delivery: str = "resource"
+    ) -> EmbeddedResource | TextContent:
         sample = sample_by_id(activity_id)
         if sample is None:
             raise ValueError(f"unknown activity_id: {activity_id}")
         if file_format not in FORMATS:
             raise ValueError(f"file_format must be one of {sorted(FORMATS)}")
+        if delivery not in DELIVERIES:
+            raise ValueError(f"delivery must be one of {list(DELIVERIES)}")
+        data = sample_file(sample, file_format, directory)
+        if delivery == "text":
+            return TextContent(type="text", text=base64.b64encode(data).decode())
+        if delivery == "json":
+            return TextContent(
+                type="text",
+                text=json.dumps(
+                    {
+                        "activity_id": sample.activity_id,
+                        "file_format": file_format,
+                        "encoding": "base64",
+                        "bytes": len(data),
+                        "sha256_prefix": _digest(data),
+                        "data": base64.b64encode(data).decode(),
+                    }
+                ),
+            )
+        mime = "application/octet-stream" if delivery == "octet" else FORMATS[file_format]
         return EmbeddedResource(
-            type="resource", resource=file_resource(sample, file_format, directory)
+            type="resource", resource=file_resource(sample, file_format, directory, mime)
         )
 
     @server.tool(
         description=(
-            "Facts the server can prove about a sample file, for comparison "
-            "with what the assistant reports reading."
+            "Facts the server derives from the file itself, for comparison "
+            "with what the assistant reports reading. declared_ values come "
+            "from the sample definition and prove nothing about the bytes; "
+            "parsed_ values are counted by walking the delivered file."
         )
     )
     def describe_activity_file(activity_id: str, file_format: str = "fit") -> str:
@@ -140,7 +173,10 @@ def build_server(
         facts = {"bytes": len(data), "sha256_prefix": _digest(data)}
         if file_format == "fit":
             facts |= read_fit_header(data)
-        facts["expected_track_points"] = sample.points
+            facts["parsed_record_messages"] = count_fit_records(data)
+        else:
+            facts["parsed_trackpoints"] = data.decode().count("<Trackpoint>")
+        facts["declared_track_points"] = sample.points
         return json.dumps(facts, indent=2)
 
     for sample in SAMPLES:

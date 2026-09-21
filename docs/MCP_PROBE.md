@@ -17,9 +17,28 @@ surface:
 | Kind | Name | Notes |
 |---|---|---|
 | Tool | `list_recent_activities` | Metadata only, shaped like the future real endpoint |
-| Tool | `get_activity_file` | Returns the file as an embedded resource |
-| Tool | `describe_activity_file` | Server-side facts, to check the assistant's claims |
+| Tool | `get_activity_file` | Returns the file; `delivery` selects the packaging |
+| Tool | `describe_activity_file` | Facts parsed from the file, to check the assistant's claims |
 | Resource | `activity://sample-*.fit` / `.tcx` | The same files, read directly |
+
+### Delivery modes
+
+Claude rejected an embedded resource typed `application/vnd.ant.fit` as an
+unsupported type: the tool call succeeded but no bytes reached the model. The
+`delivery` argument exists to find out why, by changing only the packaging:
+
+| `delivery` | Packaging |
+|---|---|
+| `resource` | Embedded resource, the format's own MIME type (the rejected case) |
+| `octet` | Embedded resource, typed `application/octet-stream` |
+| `text` | A plain text block containing base64 |
+| `json` | A JSON object whose `data` field holds base64 |
+
+`resource` failing while `octet` works points at MIME-type filtering; both
+failing while `text` works points at blob resources; all of them failing points
+at binary content in any form. The answer decides how activity retrieval ships
+files, and it matters for size: the same activity is 29 KB as FIT against about
+760 KB as TCX, large enough that a client may spill it to disk.
 
 Samples: a 20-minute run (20 track points) and a two-hour run (1800 points,
 about 29 KB of FIT and 740 KB of TCX). FIT travels base64-encoded in a blob;

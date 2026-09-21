@@ -101,7 +101,7 @@ async def test_description_matches_what_was_delivered():
             ).content[0].text
         )
     assert facts["bytes"] == len(fit_bytes(sample))
-    assert facts["expected_track_points"] == sample.points
+    assert facts["declared_track_points"] == sample.points
 
 
 @pytest.mark.anyio
@@ -175,3 +175,59 @@ def test_samples_are_valid_fit_files():
                     messages.append(frame.name)
         assert messages.count("record") == sample.points
         assert "file_id" in messages and "session" in messages
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("delivery", ["resource", "octet", "text", "json"])
+async def test_every_delivery_mode_carries_the_same_bytes(delivery):
+    """Each mode packages the file differently; none may alter it."""
+    sample = SAMPLES[0]
+    async with await connected(build_server()) as client:
+        result = await client.call_tool(
+            "get_activity_file",
+            {"activity_id": sample.activity_id, "file_format": "fit", "delivery": delivery},
+        )
+    block = result.content[0]
+    if delivery == "text":
+        delivered = base64.b64decode(block.text)
+    elif delivery == "json":
+        payload = json.loads(block.text)
+        assert payload["encoding"] == "base64" and payload["bytes"] == len(fit_bytes(sample))
+        delivered = base64.b64decode(payload["data"])
+    else:
+        expected_mime = "application/octet-stream" if delivery == "octet" else "application/vnd.ant.fit"
+        assert block.resource.mimeType == expected_mime
+        delivered = base64.b64decode(block.resource.blob)
+    assert delivered == fit_bytes(sample)
+
+
+@pytest.mark.anyio
+async def test_unknown_delivery_mode_is_refused():
+    async with await connected(build_server()) as client:
+        result = await client.call_tool(
+            "get_activity_file",
+            {"activity_id": SAMPLES[0].activity_id, "delivery": "carrier-pigeon"},
+        )
+    assert result.isError
+
+
+@pytest.mark.anyio
+async def test_described_facts_are_parsed_from_the_file():
+    """A declared count proves nothing; the parsed count must come from bytes."""
+    sample = SAMPLES[1]
+    async with await connected(build_server()) as client:
+        fit = json.loads(
+            (await client.call_tool("describe_activity_file",
+                {"activity_id": sample.activity_id, "file_format": "fit"})).content[0].text)
+        tcx = json.loads(
+            (await client.call_tool("describe_activity_file",
+                {"activity_id": sample.activity_id, "file_format": "tcx"})).content[0].text)
+    assert fit["parsed_record_messages"] == sample.points
+    assert tcx["parsed_trackpoints"] == sample.points
+    assert fit["declared_track_points"] == sample.points
+
+
+def test_record_count_is_walked_not_assumed(tmp_path):
+    from workout_relay.samples import count_fit_records
+    assert count_fit_records(fit_bytes(SAMPLES[0])) == SAMPLES[0].points
+    assert count_fit_records(b"not a fit file") is None
