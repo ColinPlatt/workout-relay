@@ -233,6 +233,23 @@ def create_app(
                 resource_name="Workout Relay",
             )
         )
+        @app.get("/.well-known/oauth-protected-resource", include_in_schema=False)
+        async def resource_metadata_at_the_root():
+            """Point a client that was given the site address at the connector.
+
+            RFC 9728 puts this document under a path derived from the resource,
+            so a client given https://host/mcp/ finds it. One given the bare
+            domain looks here, found nothing, and fell back to guessing that
+            the domain itself was the endpoint.
+            """
+            return {
+                "resource": f"{settings.base_url}/mcp/",
+                "authorization_servers": [f"{settings.base_url}/"],
+                "scopes_supported": list(SCOPES),
+                "bearer_methods_supported": ["header"],
+                "resource_name": "Workout Relay",
+            }
+
         app.mount("/mcp", connector.streamable_http_app())
 
     if probe is not None:

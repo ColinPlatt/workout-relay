@@ -557,3 +557,18 @@ async def test_the_bare_domain_forwards_to_the_connector(connector_settings):
             # The page itself is unaffected, and a non-JSON post is still refused.
             assert (await client.get("/")).status_code == 200
             assert (await client.post("/", content="hello")).status_code == 405
+
+
+@pytest.mark.anyio
+async def test_resource_metadata_is_discoverable_from_the_bare_domain(connector_settings):
+    """A client given the site address must still find the connector."""
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            for path in ("/.well-known/oauth-protected-resource",
+                         "/.well-known/oauth-protected-resource/mcp/"):
+                response = await client.get(path)
+                assert response.status_code == 200, path
+                body = response.json()
+                assert body["resource"] == "http://localhost:8000/mcp/"
+                assert body["authorization_servers"] == ["http://localhost:8000/"]
