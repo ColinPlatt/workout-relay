@@ -20,14 +20,17 @@ it applies — when you connect Garmin — not in a pop-up on arrival.
 
 ### Your Garmin session: the choice
 
-**This visit only** (the default). The session tokens are held encrypted in the
+**This visit only.** The session tokens are held encrypted in the
 server's memory and expire after a fixed window, enforced by the server rather
 than by guessing when your browser closed. Nothing Garmin-related is written to
 the database. A restart or deploy also ends the session. You sign in to Garmin
 again next time, and an assistant cannot send plans once the window closes.
 
-**Keep Garmin connected.** The session tokens are encrypted and stored until you
-disconnect, so uploads work later and an assistant can send plans unattended.
+**Keep Garmin connected** (pre-selected). The session tokens are encrypted and
+stored until you disconnect, so uploads work later and an assistant can send
+plans unattended. This is offered first because sending plans later, without
+signing in again, is what most people come here for; switch to the other option
+if you would rather nothing Garmin-related were stored.
 
 Either way, your Garmin email, password and MFA codes are never stored. They
 pass through the server once to obtain the session, and are discarded. To change
@@ -73,13 +76,13 @@ posé au moment où il s'applique : lors de la connexion à Garmin.
 
 ### Votre session Garmin : le choix
 
-**Cette visite uniquement** (par défaut). Les jetons sont conservés chiffrés en
+**Cette visite uniquement.** Les jetons sont conservés chiffrés en
 mémoire et expirent après une fenêtre fixe, appliquée par le serveur. Rien
 concernant Garmin n'est écrit en base. Un redémarrage met également fin à la
 session. Vous vous reconnecterez à Garmin la prochaine fois, et un assistant ne
 peut plus envoyer de plans une fois la fenêtre fermée.
 
-**Rester connecté à Garmin.** Les jetons chiffrés sont conservés jusqu'à votre
+**Rester connecté à Garmin** (pré-sélectionné). Les jetons chiffrés sont conservés jusqu'à votre
 déconnexion : les imports fonctionnent plus tard et un assistant peut envoyer
 des plans sans vous.
 

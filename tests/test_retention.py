@@ -249,7 +249,10 @@ async def test_the_interface_offers_the_choice_and_explains_storage(visit_settin
             page = (await client.get("/")).text
             script = (await client.get("/static/app.js")).text
             assert 'name="retention" value="visit"' in page
-            assert 'name="retention" value="persistent"' in page
+            # "Keep connected" is pre-selected; the API still requires the
+            # choice to be stated, so nothing is decided by omission.
+            assert 'name="retention" value="persistent" checked' in page
+            assert 'value="visit" checked' not in page
             assert 'id="privacy-dialog"' in page and 'id="privacy-note"' in page
             for key in ("retentionVisitHelp", "privacyCookies", "error_garmin_visit_expired"):
                 assert key in script

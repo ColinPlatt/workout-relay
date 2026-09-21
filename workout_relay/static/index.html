@@ -180,8 +180,8 @@
       <label><span data-i18n="garminPassword">Garmin password</span><input id="garmin-password" type="password" autocomplete="current-password" required></label>
       <fieldset class="retention">
         <legend data-i18n="retentionQuestion">How long may we keep your Garmin session?</legend>
-        <label class="consent"><input type="radio" name="retention" value="visit" checked><span><strong data-i18n="retentionVisit">This visit only</strong><small data-i18n="retentionVisitHelp">Session tokens stay in memory and expire automatically. Nothing Garmin-related is written to the database. You sign in to Garmin again next time, and assistants cannot send plans once the window closes.</small></span></label>
-        <label class="consent"><input type="radio" name="retention" value="persistent"><span><strong data-i18n="retentionKeep">Keep Garmin connected</strong><small data-i18n="retentionKeepHelp">Encrypted session tokens are stored until you disconnect, so uploads work later and assistants can send plans unattended.</small></span></label>
+        <label class="consent"><input type="radio" name="retention" value="visit"><span><strong data-i18n="retentionVisit">This visit only</strong><small data-i18n="retentionVisitHelp">Session tokens stay in memory and expire automatically. Nothing Garmin-related is written to the database. You sign in to Garmin again next time, and assistants cannot send plans once the window closes.</small></span></label>
+        <label class="consent"><input type="radio" name="retention" value="persistent" checked><span><strong data-i18n="retentionKeep">Keep Garmin connected</strong><small data-i18n="retentionKeepHelp">Encrypted session tokens are stored until you disconnect, so uploads work later and assistants can send plans unattended.</small></span></label>
       </fieldset>
       <label class="consent"><input id="garmin-consent" type="checkbox" required><span data-i18n="garminConsent">I understand this is unofficial, and that the choice above decides where my Garmin session is kept.</span></label>
       <button class="button primary wide" type="submit" data-i18n="connectSecurely">Connect securely</button>

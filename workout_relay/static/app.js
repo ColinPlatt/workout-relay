@@ -462,7 +462,7 @@ $("#close-garmin").addEventListener("click", () => $("#garmin-dialog").close());
 $("#garmin-login-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.currentTarget.querySelector("button[type=submit]"); setBusy(button, true); $("#garmin-login-error").textContent = "";
   try {
-    const retention = ($$('input[name="retention"]').find((option) => option.checked) || {}).value || "visit";
+    const retention = ($$('input[name="retention"]').find((option) => option.checked) || {}).value || "persistent";
     state.retention = retention;
     const result = await api("/api/v1/garmin/connect/start", { method: "POST", body: JSON.stringify({ email: $("#garmin-email").value, password: $("#garmin-password").value, retention }) });
     $("#garmin-password").value = "";
@@ -475,7 +475,7 @@ $("#garmin-login-form").addEventListener("submit", async (event) => {
 $("#garmin-mfa-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.currentTarget.querySelector("button[type=submit]"); setBusy(button, true); $("#garmin-mfa-error").textContent = "";
   try {
-    await api("/api/v1/garmin/connect/complete", { method: "POST", body: JSON.stringify({ attempt_id: state.mfaAttempt, code: $("#garmin-mfa").value, retention: state.retention || "visit" }) });
+    await api("/api/v1/garmin/connect/complete", { method: "POST", body: JSON.stringify({ attempt_id: state.mfaAttempt, code: $("#garmin-mfa").value, retention: state.retention || "persistent" }) });
     $("#garmin-mfa").value = ""; state.mfaAttempt = null; showToast(t("connected")); $("#garmin-dialog").close(); await loadGarmin();
   } catch (error) { $("#garmin-mfa").value = ""; $("#garmin-mfa-error").textContent = errorText(error); }
   finally { setBusy(button, false); }
