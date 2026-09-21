@@ -23,13 +23,38 @@ def page_language(request, explicit=None):
     return max(preferred)[2] if preferred else "en"
 
 
+# Drawn rather than written with emoji: flag emoji render as bare letters on
+# Windows and on some Android builds, which is precisely where a reader who
+# needs the switch is most likely to be.
+FLAG_GB = (
+    '<svg class="flag" viewBox="0 0 60 40" aria-hidden="true" focusable="false">'
+    '<clipPath id="{p}gb"><rect width="60" height="40" rx="5"/></clipPath>'
+    '<g clip-path="url(#{p}gb)">'
+    '<rect width="60" height="40" fill="#012169"/>'
+    '<path d="M0 0l60 40M60 0L0 40" stroke="#fff" stroke-width="9"/>'
+    '<path d="M0 0l60 40M60 0L0 40" stroke="#C8102E" stroke-width="4"/>'
+    '<path d="M30 0v40M0 20h60" stroke="#fff" stroke-width="13"/>'
+    '<path d="M30 0v40M0 20h60" stroke="#C8102E" stroke-width="7"/>'
+    '</g></svg>'
+)
+FLAG_FR = (
+    '<svg class="flag" viewBox="0 0 60 40" aria-hidden="true" focusable="false">'
+    '<clipPath id="{p}fr"><rect width="60" height="40" rx="5"/></clipPath>'
+    '<g clip-path="url(#{p}fr)">'
+    '<rect width="20" height="40" fill="#002395"/>'
+    '<rect x="20" width="20" height="40" fill="#fff"/>'
+    '<rect x="40" width="20" height="40" fill="#ED2939"/>'
+    '</g></svg>'
+)
+
+
 def language_links(path, language, **params):
     links = []
-    for code, flag, label in (("en", "🇬🇧", "English"), ("fr", "🇫🇷", "Français")):
+    for code, flag, label in (("en", FLAG_GB, "English"), ("fr", FLAG_FR, "Français")):
         url = escape(path + "?" + urlencode({**params, "lang": code}), quote=True)
         current = ' aria-current="true"' if language == code else ""
         links.append(f'<a href="{url}" lang="{code}" hreflang="{code}"{current}>'
-                     f'<span aria-hidden="true">{flag}</span> {label}</a>')
+                     f'{flag.format(p=code)} {label}</a>')
     label = "Langue" if language == "fr" else "Language"
     return f'<nav class="language-choices" aria-label="{label}">{"".join(links)}</nav>'
 

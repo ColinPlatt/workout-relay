@@ -349,7 +349,9 @@ function chooseInitialLanguage() {
 function applyLanguage(language, persist = false) {
   state.language = language === "fr" ? "fr" : "en";
   document.documentElement.lang = state.language;
-  $$("[data-language-select]").forEach(element => { element.value = state.language; });
+  $$(".lang-option").forEach((option) => {
+    option.setAttribute("aria-pressed", String(option.dataset.lang === state.language));
+  });
   $$("[data-about-link]").forEach(element => { element.href = `/about?lang=${state.language}`; });
   $$('[data-i18n]').forEach((element) => { element.textContent = t(element.dataset.i18n); });
   $$('[data-i18n-placeholder]').forEach((element) => { element.placeholder = t(element.dataset.i18nPlaceholder); });
@@ -576,8 +578,9 @@ $$('.section-tab').forEach((tab) => tab.addEventListener("click", () => {
   $(`#section-${tab.dataset.section}`).classList.remove("hidden");
 }));
 
-$$("[data-language-select]").forEach(select => select.addEventListener("change", async (event) => {
-  applyLanguage(event.target.value, true);
+$$(".lang-option").forEach((option) => option.addEventListener("click", async () => {
+  if (option.dataset.lang === state.language) return;
+  applyLanguage(option.dataset.lang, true);
   if (state.user) {
     try { state.user = await api("/api/v1/me/language", { method: "PUT", body: JSON.stringify({ language: state.language }) }); }
     catch (_) { /* Local override still works when the preference request fails. */ }

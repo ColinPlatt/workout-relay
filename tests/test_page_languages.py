@@ -22,7 +22,7 @@ def test_language_respects_browser_priorities(header, expected):
 def test_expired_consent_still_has_accessible_language_controls():
     html = consent_html("fr", expired=True)
     assert 'lang="fr"' in html
-    assert "🇫🇷" in html and "🇬🇧" in html
+    assert html.count('class="flag"') == 2 and 'hreflang="fr"' in html and 'hreflang="en"' in html
     assert 'aria-label="Langue"' in html
     assert "lang=en" in html
 
@@ -38,7 +38,7 @@ async def test_language_survives_oauth_login_error_redirect_and_approval(connect
             verifier, challenge = verifier_pair()
             grant = await authorize(client, registration, challenge, scope="plans:read activities:read")
             page = await client.get("/oauth/consent", params={"request": grant, "lang": "fr"}, headers={"Accept-Language": "en"})
-            assert 'lang="fr"' in page.text and "🇬🇧" in page.text
+            assert 'lang="fr"' in page.text and 'hreflang="en"' in page.text
             assert f"request={grant}&amp;lang=en" in page.text
             assert "fréquence cardiaque" in page.text
             assert page.headers["cache-control"] == "no-store"
@@ -66,7 +66,7 @@ async def test_about_is_public_bilingual_and_does_not_promise_push_feedback(conn
             for language in ("en", "fr"):
                 page = await client.get(f"/about?lang={language}")
                 assert page.status_code == 200 and f'lang="{language}"' in page.text
-                assert "🇬🇧" in page.text and "🇫🇷" in page.text
+                assert page.text.count('class="flag"') == 2
                 assert "Claude" in page.text and "ChatGPT" in page.text
                 assert page.text.count('class="workflow-number"') == 4
             # Explicit selection persists to the next server-rendered page.
@@ -76,3 +76,29 @@ async def test_about_is_public_bilingual_and_does_not_promise_push_feedback(conn
             assert "does not start chats or send automatic post-run feedback" in english.text
             assert "compatible Garmin device" in english.text
             assert "This visit only" in english.text
+
+
+def test_flags_are_drawn_not_typed():
+    """Flag emoji show as bare letters on Windows and some Android builds,
+    which is where someone needing the language switch may well be."""
+    from workout_relay.pages import FLAG_FR, FLAG_GB, language_links
+
+    markup = language_links("/about", "en")
+    assert "<svg" in markup and markup.count('class="flag"') == 2
+    assert "#C8102E" in FLAG_GB and "#002395" in FLAG_FR
+    # Ids are namespaced per language so two flags on one page stay distinct.
+    assert 'id="engb"' in markup and 'id="frfr"' in markup
+
+    for path in ("workout_relay/pages.py", "workout_relay/static/index.html"):
+        assert "\U0001F1EC\U0001F1E7" not in __import__("pathlib").Path(path).read_text()
+
+
+def test_the_app_switcher_is_a_pair_of_flag_buttons():
+    from pathlib import Path
+
+    page = Path("workout_relay/static/index.html").read_text()
+    script = Path("workout_relay/static/app.js").read_text()
+    # One in the header, one in each of the two dialogs.
+    assert page.count("data-language-switch") == 3
+    assert page.count('data-lang="fr"') == 3
+    assert 'aria-pressed' in script and 'option.dataset.lang === state.language' in script
