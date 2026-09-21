@@ -56,6 +56,11 @@ pytest -q
 docker compose up --build
 ```
 
+The optional MCP file-delivery probe is documented in
+[MCP_PROBE.md](docs/MCP_PROBE.md). It is off by default, serves synthetic
+sample files only, and exists to test whether assistants can read delivered
+files before the activity-retrieval feature is built.
+
 See [SECURITY.md](docs/SECURITY.md), [PLAN_FORMAT.md](docs/PLAN_FORMAT.md), and
 [DEPLOYMENT.md](docs/DEPLOYMENT.md) before enabling live Garmin authentication.
 The included `render.yaml` provides a phone-friendly Blueprint deployment with

@@ -27,6 +27,10 @@ class Settings:
     session_days: int = 30
     plan_retention_days: int = 90
     max_plan_bytes: int = 1_048_576
+    mcp_probe_enabled: bool = False
+    mcp_probe_token: str = ""
+    mcp_probe_samples_dir: str = ""
+    mcp_probe_allowed_hosts: str = ""
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -52,6 +56,10 @@ class Settings:
             session_days=int(os.getenv("SESSION_DAYS", "30")),
             plan_retention_days=int(os.getenv("PLAN_RETENTION_DAYS", "90")),
             max_plan_bytes=int(os.getenv("MAX_PLAN_BYTES", "1048576")),
+            mcp_probe_enabled=_bool("MCP_PROBE_ENABLED", False),
+            mcp_probe_token=os.getenv("MCP_PROBE_TOKEN", ""),
+            mcp_probe_samples_dir=os.getenv("MCP_PROBE_SAMPLES_DIR", ""),
+            mcp_probe_allowed_hosts=os.getenv("MCP_PROBE_ALLOWED_HOSTS", ""),
         )
         settings.validate()
         return settings

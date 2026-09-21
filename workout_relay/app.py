@@ -34,6 +34,7 @@ from .database import (
     now,
 )
 from .garmin import Connected, GarminError, Gateway, LiveGarminGateway, MfaRequired, MockGarminGateway
+from .mcp_probe import BearerGate, build_server
 from .plans import assistant_instructions, example_plan, plan_schema, validate_plan
 from .rate_limit import RateLimiter
 from .security import TokenVault, hash_password, hash_token, opaque_token, verify_password
@@ -111,6 +112,14 @@ def create_app(
     queue_event = asyncio.Event()
     worker_stop = asyncio.Event()
 
+    probe = (
+        build_server(
+            settings.mcp_probe_samples_dir, settings.base_url, settings.mcp_probe_allowed_hosts
+        )
+        if settings.mcp_probe_enabled
+        else None
+    )
+
     @asynccontextmanager
     async def lifespan(_: FastAPI):
         database.initialize()
@@ -130,7 +139,14 @@ def create_app(
             upload_worker(database, vault, gateway, upload_locks, queue_event, worker_stop)
         )
         try:
-            yield
+            if probe is None:
+                yield
+            else:
+                # The probe serves only synthetic samples; it reaches neither
+                # Garmin nor the database, and carries no account of its own.
+                logger.warning("MCP file-delivery probe is exposed at /mcp/")
+                async with probe.session_manager.run():
+                    yield
         finally:
             worker_stop.set()
             queue_event.set()
@@ -151,6 +167,12 @@ def create_app(
     app.state.settings = settings
     app.state.database = database
     app.state.gateway = gateway
+
+    if probe is not None:
+        probe_app = probe.streamable_http_app()
+        if settings.mcp_probe_token:
+            probe_app = BearerGate(probe_app, settings.mcp_probe_token)
+        app.mount("/mcp", probe_app)
 
     static = Path(__file__).parent / "static"
     assets = {
