@@ -36,7 +36,7 @@ from .security import hash_token, opaque_token
 
 logger = logging.getLogger(__name__)
 
-SCOPES = ("plans:read", "plans:write")
+SCOPES = ("plans:read", "plans:write", "activities:read")
 CONSENT_PATH = "/oauth/consent"
 AUTHORIZATION_CODE_TTL = timedelta(minutes=10)
 ACCESS_TOKEN_TTL = timedelta(hours=1)

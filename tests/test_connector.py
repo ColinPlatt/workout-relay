@@ -113,11 +113,11 @@ async def call_tool(client, token, name, arguments=None):
     return response
 
 
-async def granted_token(client, approve_as_csrf=None):
+async def granted_token(client, approve_as_csrf=None, scope="plans:read plans:write"):
     """Complete the whole flow and return the token response."""
     registration = await register_client(client)
     verifier, challenge = verifier_pair()
-    grant_id = await authorize(client, registration, challenge)
+    grant_id = await authorize(client, registration, challenge, scope=scope)
     consent = await client.post(
         "/oauth/consent",
         data={"request": grant_id, "action": "approve", "csrf": approve_as_csrf},

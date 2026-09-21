@@ -112,6 +112,27 @@ token it ever issued. Nothing here reaches Garmin credentials or tokens.
 Tool schema changes do not propagate to already-connected clients. After
 changing a tool, expect people to reconnect the connector to see it.
 
+Completed-activity tools additionally require `activities:read`, explicitly
+shown on the English/French consent page. Existing access/refresh tokens and
+API keys retain their scopes. Remove and re-add old connectors (including
+registration if the client cached its previous allowable scopes), then obtain
+fresh consent. Refresh cannot expand access. Revoke the old connection in
+Automation if it remains listed. No Garmin reconnect is needed unless its
+session has expired.
+
+Startup creates the additive `activity_access` table. Only observed activity
+IDs, account bindings and timestamps are stored, not metric responses. Detail
+reads require an ID observed in this user's listing within 24 hours. Reads are
+bounded to 50 activities per page and 20 calls per user/minute in-process;
+configure shared ingress limits if scaling. Activity reads share the upload
+ownership lock to protect refreshed Garmin tokens; `garmin_busy` means retry
+later. Disable response-body capture for activity endpoints and MCP at proxies
+and monitoring services. No deployment configuration is changed by this feature.
+
+Tests use synthetic fixtures; live Garmin response compatibility has not been
+verified. An explicitly approved test-account exercise is required before
+claiming live activity retrieval works.
+
 ## Prepared Render deployment (free)
 
 `render.yaml` defines a single free Docker web process in Frankfurt. Render

@@ -58,14 +58,36 @@ docker compose up --build
 
 Assistants connect through the MCP connector at `/mcp/`: the person adds that
 address in Claude or ChatGPT, signs in once and approves, and the assistant can
-then validate and send plans. No key is shared, and Garmin credentials stay on
+then validate and send plans, or read completed activities with separately
+approved `activities:read` permission. No key is shared, and Garmin credentials stay on
 the server. Connected assistants are listed, with one-tap revocation, under
 **Automation**.
 
 The optional MCP file-delivery probe is documented in
 [MCP_PROBE.md](docs/MCP_PROBE.md). It is off by default, serves synthetic
 sample files only, and exists to test whether assistants can read delivered
-files before the activity-retrieval feature is built.
+files; completed-activity reading currently returns JSON metrics, not files.
+
+### Completed activities / Activités terminées
+
+- MCP: `list_activities(limit=5, start=0, sport="running")`, then
+  `get_activity(activity_id="…")` using an ID from that account's list.
+- REST: `GET /api/v1/activities?limit=5&sport=running` and
+  `GET /api/v1/activities/{activity_id}`. OAuth tokens and explicitly scoped
+  API keys require `activities:read`; existing keys/grants are not upgraded.
+- Results include distance, duration, pace, heart rate, elevation, power and
+  training effect where available. Units are in field names; missing values
+  are `null`. No GPS tracks, FIT/TCX files, or lap/time-series data are returned.
+- Existing assistant connections need fresh consent: remove and re-add the
+  connector, sign in, and approve activity access. A token refresh cannot add
+  permission. Revoke the old connection under **Automation** if still listed.
+
+Les connexions existantes ne reçoivent aucune autorisation supplémentaire.
+Supprimez puis ajoutez à nouveau le connecteur, connectez-vous et approuvez
+`activities:read`. L'assistant peut ensuite lire vos activités terminées et vos
+mesures de course/santé, dont la fréquence cardiaque, sans traces GPS. Les
+valeurs absentes sont `null` ; les unités figurent dans les noms des champs.
+Les clés API nécessitent également un accord explicite lors de leur création.
 
 See [SECURITY.md](docs/SECURITY.md), [PLAN_FORMAT.md](docs/PLAN_FORMAT.md), and
 [DEPLOYMENT.md](docs/DEPLOYMENT.md) before enabling live Garmin authentication.

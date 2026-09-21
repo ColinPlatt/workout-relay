@@ -10,6 +10,8 @@ from __future__ import annotations
 import threading
 import time
 import re
+import json
+import hashlib
 from dataclasses import dataclass
 from typing import Any, Callable, Protocol
 from uuid import uuid4
@@ -45,6 +47,14 @@ class Published:
 
 
 class GarminSession(Protocol):
+    def activity_account(self) -> str: ...
+
+    def activity_tokens(self) -> str: ...
+
+    def list_activities(self, start: int, limit: int, sport: str | None) -> list[dict]: ...
+
+    def get_activity(self, activity_id: str) -> dict: ...
+
     def publish(self, workout: Any, date: str, existing: dict | None, *, progress: dict, checkpoint: Callable) -> Published: ...
 
     def cleanup_marker(self, workout: Any, workout_id: str, *, progress: dict, checkpoint: Callable) -> None: ...
@@ -172,14 +182,46 @@ class _RequestBudget:
 class LiveGarminSession:
     """One restored Garmin login, shared by every workout in a plan.
 
-    Lifetime invariant: every method runs in the upload worker's thread while
-    the event loop awaits that thread and upload ownership is still held. No
-    method may be called concurrently from two threads.
+    Lifetime invariant: every method runs in one owning thread with upload
+    ownership held, either the upload worker or the activity service. No method
+    may be called concurrently from two threads. Activity reads keep ownership
+    inside their thread even if the async caller is cancelled.
     """
 
     def __init__(self, client: Garmin):
         self._client = client
         self._sorted_listing = True
+
+    def activity_account(self) -> str:
+        if not self._client.display_name:
+            raise GarminError("garmin_reauthentication_required")
+        return self._client.display_name
+
+    def activity_tokens(self) -> str:
+        return self._client.client.dumps()
+
+    def list_activities(self, start: int, limit: int, sport: str | None) -> list[dict]:
+        return self._read_activity(self._client.get_activities, start=start, limit=limit, activitytype=sport)
+
+    def get_activity(self, activity_id: str) -> dict:
+        return self._read_activity(self._client.get_activity, activity_id)
+
+    @staticmethod
+    def _read_activity(function, *args, **kwargs):
+        try:
+            return function(*args, **kwargs)
+        except Exception as exc:
+            status = _api_status(exc)
+            if isinstance(exc, GarminConnectAuthenticationError) or status in (401, 403):
+                code = "garmin_reauthentication_required"
+            elif status == 404:
+                code = "activity_not_found"
+            elif status == 429:
+                code = "garmin_rate_limited"
+            else:
+                code = "garmin_activity_read_failed"
+            # No upstream exception bodies: activity responses are sensitive.
+            raise GarminError(code) from None
 
     def publish(
         self,
@@ -438,6 +480,26 @@ class MockGarminGateway:
 class MockGarminSession:
     def __init__(self, token_bundle: str):
         self._token_bundle = token_bundle
+
+    def activity_account(self) -> str:
+        return json.loads(self._token_bundle)["mock_user"]
+
+    def activity_tokens(self) -> str:
+        return self._token_bundle
+
+    def list_activities(self, start: int, limit: int, sport: str | None) -> list[dict]:
+        activity_id = str(int(hashlib.sha256(self.activity_account().encode()).hexdigest()[:14], 16) + 1)
+        items = [{"activityId": activity_id, "activityName": "Mock easy run",
+                  "activityType": {"typeKey": "running"}, "startTimeLocal": "2026-09-20 08:00:00",
+                  "startTimeGMT": "2026-09-20 06:00:00", "distance": 5000.0,
+                  "duration": 1800.0, "averageSpeed": 5000 / 1800, "averageHR": 140}]
+        return (items if sport in (None, "running") else [])[start:start + limit]
+
+    def get_activity(self, activity_id: str) -> dict:
+        item = self.list_activities(0, 1, None)[0]
+        if str(item["activityId"]) != activity_id:
+            raise GarminError("activity_not_found")
+        return item
 
     def publish(self, workout: Any, date: str, existing: dict | None, *, progress: dict, checkpoint: Callable) -> Published:
         workout_id = progress.get("workout_id") or (existing["garmin_workout_id"] if existing else f"mock-{uuid4().hex}")

@@ -180,7 +180,7 @@
               <li data-i18n="chatgptStep2">Add the address above as a custom connector and approve the sign-in.</li>
               <li data-i18n="chatgptStep3">Free plans do not offer custom connectors. Use the Upload tab on this site, which needs no connector.</li>
             </ol>
-            <p class="muted" data-i18n="connectApprove">Either way you will be asked to sign in to Workout Relay and approve the connection. Then ask the assistant to build a plan and send it.</p>
+            <p class="muted" data-i18n="connectApprove">Approve activity access to share completed workouts and health/run metrics, without GPS. Existing connections need fresh consent: remove and re-add the connector, then approve activities:read.</p>
             <h3 class="connector-heading" data-i18n="connectedAssistants">Connected assistants</h3>
             <div id="connection-list" class="key-list"></div>
           </article>
@@ -192,6 +192,7 @@
               <input id="key-name" maxlength="80" data-i18n-placeholder="keyNamePlaceholder" aria-label="API key name" data-i18n-aria="apiKeyName">
               <button id="create-key" class="button primary" type="button" data-i18n="createKey">Create key</button>
             </div>
+            <label><input id="key-activities" type="checkbox"> <span data-i18n="activityKeyConsent">Also allow completed activities and health/run metrics (including heart rate, without GPS). Leave unchecked for plan-only access.</span></label>
             <div id="key-result" class="secret-result hidden"></div>
             <div id="key-list" class="key-list"></div>
           </article>

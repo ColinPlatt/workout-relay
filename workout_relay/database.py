@@ -65,6 +65,16 @@ class GarminConnection(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 
+class ActivityAccess(Base):
+    """Only IDs observed in the connected Garmin account's own listing."""
+
+    __tablename__ = "activity_access"
+    user_id: Mapped[str] = mapped_column(ForeignKey("garmin_connections.user_id", ondelete="CASCADE"), primary_key=True)
+    activity_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    garmin_account: Mapped[str] = mapped_column(String(200))
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class PlanSubmission(Base):
     __tablename__ = "plan_submissions"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))

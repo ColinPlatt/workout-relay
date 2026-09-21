@@ -35,10 +35,11 @@ const translations = {
     chatgptStep1: "Paid plans: open Settings, then Security and login, and turn on Developer mode. Connectors then accept a custom server address.",
     chatgptStep2: "Add the address above as a custom connector and approve the sign-in.",
     chatgptStep3: "Free plans do not offer custom connectors. Use the Upload tab on this site, which needs no connector.",
-    connectApprove: "Either way you will be asked to sign in to Workout Relay and approve the connection. Then ask the assistant to build a plan and send it.",
+    connectApprove: "Sign in to Workout Relay and approve the requested permissions. Activity access shares completed workouts and health/run metrics, including heart rate, but no GPS tracks. Existing connections need fresh approval: remove and re-add the connector, then approve activities:read to ask about past runs.",
+    activityKeyConsent: "Also allow completed activities and health/run metrics (including heart rate, without GPS). Leave unchecked for plan-only access.",
     connectedAssistants: "Connected assistants", noConnections: "No assistants connected yet.",
     disconnect: "Disconnect", connectionRevoked: "Assistant disconnected.", lastUsed: "Last used {when}", neverUsed: "Not used yet",
-    confirmDisconnectAssistant: "Disconnect this assistant? It will no longer be able to send plans to your Garmin.",
+    confirmDisconnectAssistant: "Disconnect this assistant? It will no longer be able to send plans or read your activities.",
     apiStep1: "Fetch the format instructions and JSON Schema.", apiStep2: "Generate a plan as raw JSON.",
     apiStep3: "POST it to /api/v1/plans/validate.", apiStep4: "Fix every structured validation error.",
     apiStep5: "POST the valid plan to /api/v1/plans.", openApiDocs: "Open interactive API documentation ↗",
@@ -128,10 +129,11 @@ const translations = {
     chatgptStep1: "Offres payantes : ouvrez Réglages, puis Sécurité et connexion, et activez le mode développeur. Les connecteurs acceptent alors une adresse personnalisée.",
     chatgptStep2: "Ajoutez l'adresse ci-dessus comme connecteur personnalisé et approuvez la connexion.",
     chatgptStep3: "Les offres gratuites ne proposent pas de connecteurs personnalisés. Utilisez l'onglet Importer de ce site, qui n'en demande aucun.",
-    connectApprove: "Dans les deux cas, il vous sera demandé de vous connecter à Workout Relay et d'approuver. Demandez ensuite à l'assistant de créer un plan et de l'envoyer.",
+    connectApprove: "Connectez-vous à Workout Relay et approuvez les autorisations demandées. L'accès aux activités partage vos séances terminées et vos mesures de santé/course, dont la fréquence cardiaque, sans traces GPS. Pour une connexion existante, supprimez puis ajoutez à nouveau le connecteur et approuvez activities:read pour consulter vos courses passées.",
+    activityKeyConsent: "Autoriser aussi les activités terminées et les mesures de santé/course (dont la fréquence cardiaque, sans GPS). Laissez décoché pour limiter l'accès aux plans.",
     connectedAssistants: "Assistants connectés", noConnections: "Aucun assistant connecté pour le moment.",
     disconnect: "Déconnecter", connectionRevoked: "Assistant déconnecté.", lastUsed: "Dernière utilisation {when}", neverUsed: "Jamais utilisé",
-    confirmDisconnectAssistant: "Déconnecter cet assistant ? Il ne pourra plus envoyer de plans vers votre Garmin.",
+    confirmDisconnectAssistant: "Déconnecter cet assistant ? Il ne pourra plus envoyer de plans ni lire vos activités.",
     apiStep1: "Récupérer les instructions de format et le schéma JSON.", apiStep2: "Générer le plan en JSON brut.",
     apiStep3: "L'envoyer à /api/v1/plans/validate.", apiStep4: "Corriger chaque erreur de validation structurée.",
     apiStep5: "Envoyer le plan valide à /api/v1/plans.", openApiDocs: "Ouvrir la documentation API interactive ↗",
@@ -469,7 +471,10 @@ $("#create-key").addEventListener("click", async (event) => {
   const button = event.currentTarget;
   setBusy(button, true);
   try {
-    const result = await api("/api/v1/api-keys", { method: "POST", body: JSON.stringify({ name: $("#key-name").value || t("keyNamePlaceholder") }) });
+    const scopes = ["plans:read", "plans:write"];
+    if ($("#key-activities").checked) scopes.push("activities:read");
+    const result = await api("/api/v1/api-keys", { method: "POST", body: JSON.stringify({ name: $("#key-name").value || t("keyNamePlaceholder"), scopes }) });
+    $("#key-activities").checked = false;
     const box = $("#key-result"); box.textContent = `${t("apiKeyOnce")}\n\n${result.token}`; box.classList.remove("hidden"); showToast(t("keyCreated")); await loadKeys();
   } catch (error) { showToast(errorText(error)); }
   finally { setBusy(button, false); }

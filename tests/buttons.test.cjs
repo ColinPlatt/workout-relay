@@ -38,3 +38,24 @@ for (const id of ["validate-plan", "upload-plan", "create-key"]) {
     });
   }
 }
+
+for (const consented of [false, true]) {
+  test(`activity key scope requires explicit checkbox consent: ${consented}`, async () => {
+    let handler, sent;
+    const checkbox = { checked: consented };
+    const start = source.indexOf('$("#create-key").addEventListener');
+    const end = source.indexOf("\n});", start) + 4;
+    const context = {
+      $: (selector) => selector === "#create-key"
+        ? { addEventListener: (_, callback) => { handler = callback; } }
+        : selector === "#key-activities" ? checkbox
+        : { value: "Test", classList: { remove() {} } },
+      api: async (_, options) => { sent = JSON.parse(options.body); return { token: "test" }; },
+      t: (key) => key, showToast() {}, errorText: () => "Error", loadKeys: async () => {},
+    };
+    vm.runInNewContext(`${busy}\n${source.slice(start, end)}`, context);
+    await handler({ currentTarget: { dataset: {}, textContent: "Create", disabled: false } });
+    assert.equal(sent.scopes.includes("activities:read"), consented);
+    assert.equal(checkbox.checked, false);
+  });
+}

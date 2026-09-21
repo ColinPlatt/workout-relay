@@ -2,8 +2,8 @@
 
 Every tool acts for the account that granted the connection, identified by the
 access token's subject. Garmin credentials are never reachable from here: the
-connector can queue a plan, and the existing worker does the Garmin work with
-tokens that stay server-side.
+connector can queue a plan or read completed-activity metrics with separate
+consent. Garmin tokens always stay server-side.
 
 Results are plain JSON. Assistants parse that reliably, which a delivery
 experiment confirmed on both ChatGPT and Claude, whereas binary attachments
@@ -12,6 +12,7 @@ did not survive on every client.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any, Callable
@@ -24,6 +25,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import AnyHttpUrl
 
 from .config import Settings
+from .activities import ActivityError, ActivityService
 from .database import Database, GarminConnection
 from .mcp_probe import allowed_hosts
 from .oauth import SCOPES, RelayOAuthProvider
@@ -72,6 +74,7 @@ def build_connector(
     database: Database,
     notify: Callable[[], None],
     provider: RelayOAuthProvider | None = None,
+    activities: ActivityService | None = None,
 ) -> FastMCP:
     """Build the connector. `notify` wakes the upload worker after a submission.
 
@@ -89,7 +92,10 @@ def build_connector(
             "submit_plan, and repair every reported error. submit_plan queues "
             "the work and returns immediately; poll get_plan_status until it "
             "is completed or failed. Reuse a workout's id to edit or move it; "
-            "a new id creates a separate workout."
+            "a new id creates a separate workout. For completed activities, "
+            "use list_activities then get_activity with an id from that list. "
+            "These require separately consented activities:read access; reconnect "
+            "to grant it. Metrics have explicit units; null means unavailable, not zero."
         ),
         streamable_http_path="/",
         stateless_http=True,
@@ -100,7 +106,7 @@ def build_connector(
         auth=AuthSettings(
             issuer_url=AnyHttpUrl(settings.base_url),
             resource_server_url=AnyHttpUrl(f"{settings.base_url}/mcp/"),
-            required_scopes=["plans:read"],
+            required_scopes=[],  # Authentication here; authorization per tool.
             # Our tokens are bound to an account and a client, and clients do
             # not all send a resource. Audience checking is a later hardening.
             validate_token_resource=False,
@@ -200,5 +206,40 @@ def build_connector(
                 "display_name": connection.display_name,
             }
         )
+
+    async def read_activity(detail: str | None = None, **query) -> str:
+        try:
+            user_id = _actor("activities:read")
+        except NotAuthorized:
+            return _error("scope_required", required_scope="activities:read",
+                          message="Reconnect and approve activity access.")
+        if activities is None:
+            return _error("activities_unavailable")
+        try:
+            # The service holds ownership inside the thread throughout the read
+            # and refreshed-token persistence, including caller cancellation.
+            payload = await asyncio.to_thread(
+                activities.get if detail is not None else activities.list,
+                user_id, **({"activity_id": detail} if detail is not None else query),
+            )
+            return _ok(payload)
+        except ActivityError as exc:
+            return _error(exc.code)
+
+    @server.tool(description=(
+        "List completed Garmin activities (not planned workouts). Requires activities:read. "
+        "Returns metrics with explicit units, no GPS. limit is 1–50; use next_start "
+        "for older pages, null means no next page. Optional sport: running."
+    ))
+    async def list_activities(limit: int = 5, start: int = 0, sport: str | None = None) -> str:
+        return await read_activity(limit=limit, start=start, sport=sport)
+
+    @server.tool(description=(
+        "Read metrics for a completed activity. Requires activities:read and an id "
+        "returned by this account's list_activities within the last 24 hours. "
+        "Missing metrics are null. No GPS, FIT or TCX files are returned."
+    ))
+    async def get_activity(activity_id: str) -> str:
+        return await read_activity(detail=activity_id)
 
     return server

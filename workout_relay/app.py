@@ -10,6 +10,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Literal
 from uuid import uuid4
 
 from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Request, Response
@@ -25,6 +26,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .config import Settings
+from .activities import ActivityError, ActivityService
 from .database import (
     ApiKey,
     BrowserSession,
@@ -67,6 +69,9 @@ class LanguagePreference(BaseModel):
 
 class ApiKeyRequest(BaseModel):
     name: str = Field(min_length=1, max_length=80)
+    scopes: list[Literal["plans:read", "plans:write", "activities:read"]] = Field(
+        default_factory=lambda: ["plans:read", "plans:write"], min_length=1, max_length=3
+    )
 
 
 class GarminLogin(BaseModel):
@@ -113,6 +118,7 @@ def create_app(
     database = Database(settings.database_url)
     vault = TokenVault(settings.master_encryption_key)
     gateway = gateway or (LiveGarminGateway() if settings.garmin_mode == "live" else MockGarminGateway())
+    activities = ActivityService(database, vault, gateway)
     limiter = RateLimiter()
     upload_locks = UserLockPool()
     bearer_scheme = HTTPBearer(auto_error=False)
@@ -129,7 +135,7 @@ def create_app(
         )
     connector_provider = RelayOAuthProvider(database, settings.base_url) if connector_possible else None
     connector = (
-        build_connector(settings, database, queue_event.set, connector_provider)
+        build_connector(settings, database, queue_event.set, connector_provider, activities)
         if connector_possible
         else None
     )
@@ -242,6 +248,8 @@ def create_app(
             "/api/v1/api-keys",
             "/api/v1/garmin",
             "/api/v1/plans",
+            "/api/v1/activities",
+            "/mcp",
         )
         if request.url.path.startswith(private_prefixes):
             response.headers["Cache-Control"] = "no-store"
@@ -262,6 +270,12 @@ def create_app(
         if credentials:
             if credentials.scheme.lower() != "bearer" or not credentials.credentials:
                 raise api_error(401, "invalid_authorization")
+            if credentials.credentials.startswith("wka_") and connector_provider:
+                token = await connector_provider.load_access_token(credentials.credentials)
+                user = db.get(User, token.subject) if token and token.subject else None
+                if user is None:
+                    raise api_error(401, "invalid_access_token")
+                return Actor(user, "oauth", frozenset(token.scopes))
             result = database.actor_from_api_key(db, credentials.credentials)
             if not result:
                 raise api_error(401, "invalid_api_key")
@@ -272,7 +286,7 @@ def create_app(
             result = database.actor_from_session(db, session_token)
             if result:
                 user, csrf_hash = result
-                return Actor(user, "session", frozenset({"plans:read", "plans:write"}), csrf_hash)
+                return Actor(user, "session", frozenset(SCOPES), csrf_hash)
         raise api_error(401, "authentication_required")
 
     async def mutation_actor(
@@ -578,6 +592,7 @@ def create_app(
             name=name,
             prefix=token[:12],
             token_hash=hash_token(token),
+            scopes=" ".join(dict.fromkeys(body.scopes)),
         )
         db.add(item)
         database.audit(db, "api_key.created", current.user.id, {"key_id": item.id})
@@ -596,6 +611,27 @@ def create_app(
         db.delete(item)
         database.audit(db, "api_key.revoked", current.user.id, {"key_id": key_id})
         db.commit()
+
+    @app.get("/api/v1/activities", tags=["Activities"])
+    async def list_activities(
+        limit: int = 5, start: int = 0, sport: str | None = None,
+        current: Actor = Depends(actor),
+    ):
+        if "activities:read" not in current.scopes:
+            raise api_error(403, "scope_required")
+        try:
+            return await drain_thread(activities.list, current.user.id, limit, start, sport)
+        except ActivityError as exc:
+            raise api_error(exc.status, exc.code) from None
+
+    @app.get("/api/v1/activities/{activity_id}", tags=["Activities"])
+    async def get_activity(activity_id: str, current: Actor = Depends(actor)):
+        if "activities:read" not in current.scopes:
+            raise api_error(403, "scope_required")
+        try:
+            return await drain_thread(activities.get, current.user.id, activity_id)
+        except ActivityError as exc:
+            raise api_error(exc.status, exc.code) from None
 
     @app.get("/api/v1/garmin/status", tags=["Garmin"])
     async def garmin_status(current: Actor = Depends(actor), db: Session = Depends(db_session)):
@@ -698,7 +734,7 @@ def create_app(
 
     @app.get("/api/v1/plans", tags=["Plans"])
     async def list_plans(current: Actor = Depends(actor), db: Session = Depends(db_session)):
-        if current.method == "api_key" and "plans:read" not in current.scopes:
+        if current.method != "session" and "plans:read" not in current.scopes:
             raise api_error(403, "scope_required")
         items = db.scalars(
             select(PlanSubmission)
@@ -714,7 +750,7 @@ def create_app(
         current: Actor = Depends(actor),
         db: Session = Depends(db_session),
     ):
-        if current.method == "api_key" and "plans:read" not in current.scopes:
+        if current.method != "session" and "plans:read" not in current.scopes:
             raise api_error(403, "scope_required")
         item = db.get(PlanSubmission, submission_id)
         if not item or item.user_id != current.user.id:
@@ -1108,6 +1144,7 @@ CONSENT_TEXT = {
         "intro": "{client} is asking to connect to your Workout Relay account.",
         "allows": "If you approve, it will be able to:",
         "plans:read": "read your plan format, submissions and Garmin connection status",
+        "activities:read": "read your completed Garmin activities and health/run metrics (including heart rate, pace and distance), without GPS tracks; share these with this assistant",
         "plans:write": "send workout plans to your Garmin calendar",
         "never": "It will never receive your Garmin password, your Garmin session tokens, or your Workout Relay password.",
         "revoke": "You can revoke this at any time under Settings, Connected assistants.",
@@ -1126,6 +1163,7 @@ CONSENT_TEXT = {
         "intro": "{client} demande à se connecter à votre compte Workout Relay.",
         "allows": "Si vous acceptez, il pourra :",
         "plans:read": "lire votre format de plan, vos envois et l'état de la connexion Garmin",
+        "activities:read": "lire vos activités Garmin terminées et vos mesures de santé/course (dont fréquence cardiaque, allure et distance), sans traces GPS ; les partager avec cet assistant",
         "plans:write": "envoyer des plans d'entraînement vers votre calendrier Garmin",
         "never": "Il ne recevra jamais votre mot de passe Garmin, vos jetons de session Garmin, ni votre mot de passe Workout Relay.",
         "revoke": "Vous pouvez révoquer cet accès à tout moment dans Réglages, Assistants connectés.",
