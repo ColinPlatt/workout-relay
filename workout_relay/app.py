@@ -21,7 +21,7 @@ from mcp.server.auth.routes import create_auth_routes, create_protected_resource
 from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOptions
 from pydantic import AnyHttpUrl
 from pydantic import BaseModel, EmailStr, Field, SecretStr
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -759,6 +759,32 @@ def create_app(
             .limit(50)
         ).all()
         return {"items": [submission_json(item) for item in items]}
+
+    @app.delete("/api/v1/plans", tags=["Plans"])
+    async def clear_plan_history(
+        current: Actor = Depends(session_mutation_actor), db: Session = Depends(db_session)
+    ):
+        """Forget finished submissions, keeping what prevents duplicates.
+
+        The workout links record which Garmin workout each id became. Deleting
+        those would make the next send create a second copy of every workout
+        rather than updating the existing one, so history is cleared and the
+        links stay.
+        """
+        removed = db.execute(
+            delete(PlanSubmission).where(
+                PlanSubmission.user_id == current.user.id,
+                PlanSubmission.status.in_(("completed", "failed")),
+            )
+        ).rowcount
+        remaining = db.scalar(
+            select(func.count())
+            .select_from(PlanSubmission)
+            .where(PlanSubmission.user_id == current.user.id)
+        )
+        database.audit(db, "plans.history_cleared", current.user.id, {"removed": removed})
+        db.commit()
+        return {"removed": removed, "in_progress": remaining}
 
     @app.get("/api/v1/plans/{submission_id}", tags=["Plans"])
     async def get_plan_status(

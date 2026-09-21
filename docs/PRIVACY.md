@@ -50,6 +50,16 @@ Activity data read through an assistant is fetched from Garmin on request and
 passed to that assistant. It is not stored here, and it requires a separate
 `activities:read` permission you grant explicitly.
 
+### Clearing plan history
+
+**Clear history** under Plans deletes your finished submissions — the plan
+contents and their results — at any time, without waiting for the retention
+period. Two things it deliberately does not touch: workouts already sent to
+Garmin, which live in your Garmin account and are yours to delete there, and
+the small record of which workout id became which Garmin workout. That record
+holds no plan content, and removing it would make the next send create a second
+copy of every workout instead of updating the existing one.
+
 ### Your rights
 
 Access and erasure are built in: everything above is visible in the interface,

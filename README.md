@@ -47,6 +47,15 @@ language and provides a persistent language override.
 Use `GARMIN_MODE=mock` for local development. Real Garmin authentication is only
 enabled with `GARMIN_MODE=live`.
 
+## Getting set up
+
+Until Garmin is connected, the dashboard shows a guided panel: which sign-in
+method works (an account using "Sign in with Apple" or Google needs a password
+set first, the most common reason connecting fails), what happens with an MFA
+code, the retention choice, and where the workout appears afterwards. The
+Assistants tab does the same for connectors, marking Claude or ChatGPT as
+connected once one of them is, and hiding the walkthrough once anything is.
+
 ## Privacy
 
 Garmin credentials are never stored. When connecting Garmin the person chooses

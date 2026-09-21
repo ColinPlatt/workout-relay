@@ -230,3 +230,27 @@ input[type=checkbox] { width: 20px; min-height: 20px; accent-color: var(--green)
 .privacy-note-actions { display: flex; gap: 8px; }
 .privacy-note-actions .button { flex: 1; }
 footer .text-link { border: 0; background: transparent; cursor: pointer; padding: 0; font: inherit; }
+
+.setup-card { padding: 27px; margin-bottom: 20px; }
+.setup-steps { display: grid; gap: 22px; margin: 0 0 22px; padding: 0; list-style: none; counter-reset: setup; }
+.setup-steps li { display: grid; grid-template-columns: 120px 1fr; gap: 18px; align-items: start; }
+.setup-steps strong { display: block; margin-bottom: 4px; }
+.setup-steps p { margin: 0; color: var(--muted); font-size: 14px; }
+.setup-art { width: 120px; height: 80px; border-radius: 10px; background: var(--cream); }
+.setup-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.setup-help { margin-bottom: 18px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; }
+.setup-help summary { cursor: pointer; font-weight: 750; font-size: 14px; }
+.setup-help p { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+@media (max-width: 560px) {
+  .setup-steps li { grid-template-columns: 1fr; }
+  .setup-art { width: 100%; height: auto; max-height: 140px; }
+  .setup-actions .button { width: 100%; }
+}
+
+.setup-strip { margin-bottom: 20px; padding: 18px; background: var(--cream); border-radius: 12px; }
+.setup-strip .setup-steps { gap: 16px; margin-bottom: 0; }
+.setup-strip .setup-art { background: var(--paper); }
+.disclosure summary { display: flex; align-items: center; gap: 10px; }
+.badge { padding: 2px 9px; background: var(--mint); color: var(--green-dark); border-radius: 99px;
+  font-size: 12px; font-weight: 800; }
+.history-actions { display: flex; align-items: center; gap: 8px; }

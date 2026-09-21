@@ -30,6 +30,15 @@ const translations = {
     ruleNoMarkdown: "Send raw JSON—not Markdown code fences or explanatory text.", assistantAccess: "Assistant access",
     assistantHelp: "For a custom GPT or your own scripts, create a revocable bearer key. Add it only to the tool's protected API-authentication field—never paste it into a chat. The full key is shown once. Claude cannot use a bearer key: connect it with the connector above.",
     keyNamePlaceholder: "My training assistant", createKey: "Create key", apiWorkflow: "Recommended API workflow",
+    assistantOneTitle: "Copy the connector address",
+    assistantOneBody: "Open Connection details below and tap Copy address. It is the same address for Claude and ChatGPT.",
+    assistantTwoTitle: "Add it as a custom connector",
+    assistantTwoBody: "Use the steps for your assistant below. Leave any advanced OAuth fields empty.",
+    assistantThreeTitle: "Sign in here and approve",
+    assistantThreeBody: "Your assistant sends you back here to sign in once and approve. It never sees your Garmin or Workout Relay password.",
+    connectedBadge: "Connected", clearHistory: "Clear history",
+    confirmClearHistory: "Clear your plan history? Finished submissions are deleted. Workouts already in Garmin are untouched, and sending the same plan again will still update them rather than create duplicates.",
+    historyCleared: "History cleared: {removed} removed.",
     connectAssistant: "Connect an assistant", connectorAddress: "Connector address", copyAddress: "Copy address",
     connectAssistantHelp: "Let your assistant send plans and, with your permission, review past runs. Your passwords stay private.",
     inClaude: "In Claude", inChatgpt: "In ChatGPT",
@@ -71,6 +80,17 @@ const translations = {
     privacyControlDelete: "Delete your account under Account, which removes everything above.",
     privacyCookies: "Cookies: one signed-in session cookie and one CSRF cookie, both strictly necessary, plus your language choice stored in this browser. No consent banner is needed for those, and nothing else is set.",
     error_garmin_visit_expired: "Your Garmin session has expired for this visit. Connect Garmin again to continue.",
+    setupStep: "Set up", setupTitle: "Connect Garmin to send your first plan",
+    setupIntro: "You sign in to Garmin once, here. There is nothing to copy from Garmin Connect: Workout Relay uses your Garmin account sign-in, and never stores the password.",
+    setupOneTitle: "Check how you sign in to Garmin",
+    setupOneBody: "You need your Garmin email and password. If you sign in to Garmin with Apple or Google instead, there is no password for us to use: open Garmin account settings and set one first. This is the most common reason connecting fails.",
+    setupTwoTitle: "Enter the verification code, if asked",
+    setupTwoBody: "If your Garmin account uses two-factor authentication, Garmin sends a code by email or text. Type it on the next screen. The attempt expires after five minutes; start again if it does.",
+    setupThreeTitle: "Choose how long we keep the session",
+    setupThreeBody: "Keep Garmin connected so plans can be sent later, including by an assistant while you are away. Or choose this visit only, and nothing Garmin-related is stored at all.",
+    setupFourTitle: "Find the workout in Garmin Connect",
+    setupFourBody: "After sending a plan, open Garmin Connect and look at the calendar on the workout's date. It syncs to your watch the same way a workout you created there would.",
+    needHelp: "Need help connecting?",
     connectGarmin: "Connect Garmin", garminConnected: "Garmin connected",
     connectedHelp: "Encrypted Garmin session tokens are stored so you do not need to sign in for every upload.",
     disconnectGarmin: "Disconnect and delete tokens", beforeConnecting: "Before connecting",
@@ -151,6 +171,15 @@ const translations = {
     ruleNoMarkdown: "Envoyez du JSON brut, sans bloc de code Markdown ni texte explicatif.", assistantAccess: "Accès pour assistant",
     assistantHelp: "Pour un GPT personnalisé ou vos propres scripts, créez une clé révocable. Ajoutez-la uniquement au champ d'authentification API protégé de l'outil, jamais dans une conversation. La clé complète n'est affichée qu'une fois. Claude ne peut pas utiliser de clé : connectez-le avec le connecteur ci-dessus.",
     keyNamePlaceholder: "Mon assistant d'entraînement", createKey: "Créer une clé", apiWorkflow: "Flux API recommandé",
+    assistantOneTitle: "Copiez l'adresse du connecteur",
+    assistantOneBody: "Ouvrez Détails de connexion ci-dessous et touchez Copier l'adresse. Elle est identique pour Claude et ChatGPT.",
+    assistantTwoTitle: "Ajoutez-la comme connecteur personnalisé",
+    assistantTwoBody: "Suivez les étapes de votre assistant ci-dessous. Laissez vides les champs OAuth avancés.",
+    assistantThreeTitle: "Connectez-vous ici et approuvez",
+    assistantThreeBody: "Votre assistant vous renvoie ici pour vous connecter une fois et approuver. Il ne voit jamais vos mots de passe Garmin ou Workout Relay.",
+    connectedBadge: "Connecté", clearHistory: "Effacer l'historique",
+    confirmClearHistory: "Effacer votre historique de plans ? Les envois terminés sont supprimés. Les séances déjà dans Garmin ne sont pas touchées, et renvoyer le même plan les mettra à jour au lieu de créer des doublons.",
+    historyCleared: "Historique effacé : {removed} supprimé(s).",
     connectAssistant: "Connecter un assistant", connectorAddress: "Adresse du connecteur", copyAddress: "Copier l'adresse",
     connectAssistantHelp: "Votre assistant peut envoyer vos plans et, avec votre accord, consulter vos courses passées. Vos mots de passe restent privés.",
     inClaude: "Dans Claude", inChatgpt: "Dans ChatGPT",
@@ -192,6 +221,17 @@ const translations = {
     privacyControlDelete: "Supprimez votre compte dans Compte, ce qui efface tout ce qui précède.",
     privacyCookies: "Cookies : un cookie de session et un cookie CSRF, tous deux strictement nécessaires, plus votre choix de langue conservé dans ce navigateur. Aucune bannière de consentement n'est requise pour cela, et rien d'autre n'est déposé.",
     error_garmin_visit_expired: "Votre session Garmin a expiré pour cette visite. Reconnectez Garmin pour continuer.",
+    setupStep: "Mise en route", setupTitle: "Connectez Garmin pour envoyer votre premier plan",
+    setupIntro: "Vous vous connectez à Garmin une seule fois, ici. Rien à copier depuis Garmin Connect : Workout Relay utilise vos identifiants Garmin et ne conserve jamais le mot de passe.",
+    setupOneTitle: "Vérifiez votre mode de connexion Garmin",
+    setupOneBody: "Il vous faut votre e-mail et votre mot de passe Garmin. Si vous vous connectez à Garmin avec Apple ou Google, aucun mot de passe n'existe de notre côté : ouvrez les réglages de votre compte Garmin et définissez-en un. C'est la cause d'échec la plus fréquente.",
+    setupTwoTitle: "Saisissez le code de vérification, si demandé",
+    setupTwoBody: "Si votre compte Garmin utilise la double authentification, Garmin envoie un code par e-mail ou SMS. Saisissez-le à l'écran suivant. La tentative expire après cinq minutes ; recommencez le cas échéant.",
+    setupThreeTitle: "Choisissez la durée de conservation",
+    setupThreeBody: "Restez connecté à Garmin pour envoyer des plans plus tard, y compris par un assistant en votre absence. Ou choisissez cette visite uniquement : rien concernant Garmin n'est alors conservé.",
+    setupFourTitle: "Retrouvez la séance dans Garmin Connect",
+    setupFourBody: "Après l'envoi, ouvrez Garmin Connect et regardez le calendrier à la date de la séance. Elle se synchronise avec votre montre comme une séance créée sur place.",
+    needHelp: "Besoin d'aide pour vous connecter ?",
     connectGarmin: "Connecter Garmin", garminConnected: "Garmin connecté",
     connectedHelp: "Des jetons de session Garmin chiffrés sont conservés afin d'éviter une reconnexion à chaque import.",
     disconnectGarmin: "Déconnecter et supprimer les jetons", beforeConnecting: "Avant la connexion",
@@ -341,6 +381,7 @@ function renderGarminStatus(status) {
   } else if (status.status === "reauthentication_required") {
     strong.textContent = t("garminNeedsLogin"); small.textContent = t("tapToManage");
   } else { strong.textContent = t("garminNotConnected"); small.textContent = t("tapToManage"); }
+  $("#garmin-setup").classList.toggle("hidden", status.connected);
 }
 
 async function openGarminDialog() {
@@ -412,6 +453,13 @@ async function loadHistory() {
 async function loadConnections() {
   $("#connector-url").value = `${window.location.origin}/mcp/`;
   const data = await api("/api/v1/connections");
+  const platforms = new Set(data.items.map((item) => platformOf(item.client_name)));
+  $("#claude-badge").classList.toggle("hidden", !platforms.has("claude"));
+  $("#chatgpt-badge").classList.toggle("hidden", !platforms.has("chatgpt"));
+  // The walkthrough stays until something is connected, then gets out of the way.
+  $("#assistant-setup").classList.toggle("hidden", data.items.length > 0);
+  $("#claude-guide").open = !platforms.has("claude") && !data.items.length;
+  $("#chatgpt-guide").open = false;
   const list = $("#connection-list");
   if (!data.items.length) { list.innerHTML = `<p class="muted">${escapeHtml(t("noConnections"))}</p>`; return; }
   const when = (value) => value
@@ -424,6 +472,15 @@ async function loadConnections() {
     showToast(t("connectionRevoked"));
     await loadConnections();
   }));
+}
+
+// The name is self-reported at registration, so treat it as a hint for the
+// guides, never as proof of which product is connected.
+function platformOf(name) {
+  const text = String(name || "").toLowerCase();
+  if (text.includes("claude") || text.includes("anthropic")) return "claude";
+  if (text.includes("chatgpt") || text.includes("openai")) return "chatgpt";
+  return "other";
 }
 
 async function loadKeys() {
@@ -458,6 +515,8 @@ $("#auth-form").addEventListener("submit", async (event) => {
 $("#logout").addEventListener("click", async () => { await api("/api/v1/auth/logout", { method: "POST" }); showAuth(); });
 
 $("#garmin-card").addEventListener("click", openGarminDialog);
+$("#setup-connect").addEventListener("click", openGarminDialog);
+$("#setup-privacy").addEventListener("click", () => $("#privacy-dialog").showModal());
 $("#close-garmin").addEventListener("click", () => $("#garmin-dialog").close());
 $("#garmin-login-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.currentTarget.querySelector("button[type=submit]"); setBusy(button, true); $("#garmin-login-error").textContent = "";
@@ -528,6 +587,17 @@ $("#upload-plan").addEventListener("click", async (event) => {
   finally { setBusy(button, false); }
 });
 $("#refresh-history").addEventListener("click", loadHistory);
+$("#clear-history").addEventListener("click", async (event) => {
+  if (!confirm(t("confirmClearHistory"))) return;
+  const button = event.currentTarget;
+  setBusy(button, true);
+  try {
+    const result = await api("/api/v1/plans", { method: "DELETE" });
+    showToast(t("historyCleared", { removed: result.removed }));
+    await loadHistory();
+  } catch (error) { showToast(errorText(error)); }
+  finally { setBusy(button, false); }
+});
 
 async function instructionsText() {
   const [info, example] = await Promise.all([api(`/api/v1/plan-format?language=${state.language}`), api("/api/v1/plan-example")]);

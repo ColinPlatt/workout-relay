@@ -69,6 +69,84 @@
         </button>
       </div>
 
+
+      <section id="garmin-setup" class="card setup-card hidden">
+        <p class="step" data-i18n="setupStep">Set up</p>
+        <h2 data-i18n="setupTitle">Connect Garmin to send your first plan</h2>
+        <p class="muted compact-copy" data-i18n="setupIntro">You sign in to Garmin once, here. There is nothing to copy from Garmin Connect: Workout Relay uses your Garmin account sign-in, and never stores the password.</p>
+        <ol class="setup-steps">
+          <li>
+            <svg class="setup-art" viewBox="0 0 120 80" role="img" aria-labelledby="art1-title">
+              <title id="art1-title" data-i18n="setupOneTitle">Check how you sign in to Garmin</title>
+              <rect x="6" y="10" width="108" height="60" rx="8" fill="var(--mint)" stroke="var(--line)"/>
+              <rect x="16" y="22" width="88" height="16" rx="5" fill="var(--paper)" stroke="var(--line)"/>
+              <text x="24" y="33" font-size="9" fill="var(--ink)">name@email</text>
+              <path d="M96 26l5 5 5-5" stroke="var(--green)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+              <rect x="16" y="44" width="88" height="16" rx="5" fill="var(--paper)" stroke="var(--line)"/>
+              <circle cx="26" cy="52" r="2.2" fill="var(--muted)"/><circle cx="33" cy="52" r="2.2" fill="var(--muted)"/>
+              <circle cx="40" cy="52" r="2.2" fill="var(--muted)"/><circle cx="47" cy="52" r="2.2" fill="var(--muted)"/>
+              <path d="M96 48l5 5 5-5" stroke="var(--green)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            </svg>
+            <div>
+              <strong data-i18n="setupOneTitle">Check how you sign in to Garmin</strong>
+              <p data-i18n="setupOneBody">You need your Garmin email and password. If you sign in to Garmin with Apple or Google instead, there is no password for us to use: open Garmin account settings and set one first. This is the most common reason connecting fails.</p>
+            </div>
+          </li>
+          <li>
+            <svg class="setup-art" viewBox="0 0 120 80" role="img" aria-labelledby="art2-title">
+              <title id="art2-title" data-i18n="setupTwoTitle">Enter the verification code, if asked</title>
+              <rect x="34" y="6" width="52" height="68" rx="9" fill="var(--paper)" stroke="var(--line)"/>
+              <rect x="40" y="16" width="40" height="22" rx="5" fill="var(--mint)"/>
+              <text x="47" y="31" font-size="11" letter-spacing="2" fill="var(--ink)">123456</text>
+              <rect x="44" y="46" width="32" height="5" rx="2.5" fill="var(--line)"/>
+              <rect x="44" y="56" width="22" height="5" rx="2.5" fill="var(--line)"/>
+            </svg>
+            <div>
+              <strong data-i18n="setupTwoTitle">Enter the verification code, if asked</strong>
+              <p data-i18n="setupTwoBody">If your Garmin account uses two-factor authentication, Garmin sends a code by email or text. Type it on the next screen. The attempt expires after five minutes; start again if it does.</p>
+            </div>
+          </li>
+          <li>
+            <svg class="setup-art" viewBox="0 0 120 80" role="img" aria-labelledby="art3-title">
+              <title id="art3-title" data-i18n="setupThreeTitle">Choose how long we keep the session</title>
+              <rect x="6" y="12" width="50" height="56" rx="8" fill="var(--paper)" stroke="var(--green)" stroke-width="2"/>
+              <circle cx="31" cy="34" r="11" fill="none" stroke="var(--green)" stroke-width="2.5"/>
+              <path d="M31 27v8l5 3" stroke="var(--green)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+              <rect x="16" y="52" width="30" height="5" rx="2.5" fill="var(--line)"/>
+              <rect x="64" y="12" width="50" height="56" rx="8" fill="var(--paper)" stroke="var(--line)"/>
+              <path d="M79 36l6 6 14-14" stroke="var(--muted)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="74" y="52" width="30" height="5" rx="2.5" fill="var(--line)"/>
+            </svg>
+            <div>
+              <strong data-i18n="setupThreeTitle">Choose how long we keep the session</strong>
+              <p data-i18n="setupThreeBody">Keep Garmin connected so plans can be sent later, including by an assistant while you are away. Or choose this visit only, and nothing Garmin-related is stored at all.</p>
+            </div>
+          </li>
+          <li>
+            <svg class="setup-art" viewBox="0 0 120 80" role="img" aria-labelledby="art4-title">
+              <title id="art4-title" data-i18n="setupFourTitle">Find the workout in Garmin Connect</title>
+              <rect x="10" y="12" width="100" height="58" rx="8" fill="var(--paper)" stroke="var(--line)"/>
+              <rect x="10" y="12" width="100" height="13" rx="8" fill="var(--ink)"/>
+              <g fill="var(--line)">
+                <rect x="18" y="32" width="16" height="12" rx="3"/><rect x="38" y="32" width="16" height="12" rx="3"/>
+                <rect x="78" y="32" width="16" height="12" rx="3"/><rect x="18" y="50" width="16" height="12" rx="3"/>
+                <rect x="58" y="50" width="16" height="12" rx="3"/><rect x="78" y="50" width="16" height="12" rx="3"/>
+              </g>
+              <rect x="58" y="32" width="16" height="12" rx="3" fill="var(--green)"/>
+              <rect x="38" y="50" width="16" height="12" rx="3" fill="var(--mint)" stroke="var(--green)"/>
+            </svg>
+            <div>
+              <strong data-i18n="setupFourTitle">Find the workout in Garmin Connect</strong>
+              <p data-i18n="setupFourBody">After sending a plan, open Garmin Connect and look at the calendar on the workout's date. It syncs to your watch the same way a workout you created there would.</p>
+            </div>
+          </li>
+        </ol>
+        <div class="setup-actions">
+          <button id="setup-connect" class="button primary" type="button" data-i18n="connectGarmin">Connect Garmin</button>
+          <button id="setup-privacy" class="button ghost-border" type="button" data-i18n="readPrivacy">What is stored</button>
+        </div>
+      </section>
+
       <nav class="section-tabs" aria-label="Dashboard sections" data-i18n-aria="dashboard">
         <button class="section-tab active" data-section="upload" type="button" data-i18n="upload">Plans</button>
         <button class="section-tab" data-section="automation" type="button" data-i18n="automation">Assistants</button>
@@ -104,7 +182,7 @@
         </div>
 
         <div class="card history-card">
-          <div class="card-heading"><div><p class="step" data-i18n="recent">Recent</p><h2 data-i18n="planHistory">Plan history</h2></div><button id="refresh-history" class="icon-button" type="button" aria-label="Refresh" data-i18n-aria="refresh">↻</button></div>
+          <div class="card-heading"><div><p class="step" data-i18n="recent">Recent</p><h2 data-i18n="planHistory">Plan history</h2></div><span class="history-actions"><button id="clear-history" class="button ghost" type="button" data-i18n="clearHistory">Clear history</button><button id="refresh-history" class="icon-button" type="button" aria-label="Refresh" data-i18n-aria="refresh">↻</button></span></div>
           <div id="history-list" class="history-list"><p class="muted" data-i18n="noPlans">No plans submitted yet.</p></div>
         </div>
       </section>
@@ -114,6 +192,60 @@
           <article class="card automation-card guide-wide">
             <h2 data-i18n="connectAssistant">Connect an assistant</h2>
             <p class="muted" data-i18n="connectAssistantHelp">Add this address as a connector in Claude or ChatGPT. You sign in here once and approve; the assistant never sees your Garmin or Workout Relay password.</p>
+            <div id="assistant-setup" class="setup-strip hidden">
+              <ol class="setup-steps">
+                <li>
+                  <svg class="setup-art" viewBox="0 0 120 80" role="img" aria-labelledby="asst1-title">
+                    <title id="asst1-title" data-i18n="assistantOneTitle">Copy the connector address</title>
+                    <rect x="12" y="22" width="70" height="20" rx="6" fill="var(--paper)" stroke="var(--line)"/>
+                    <rect x="20" y="30" width="44" height="5" rx="2.5" fill="var(--line)"/>
+                    <rect x="46" y="40" width="62" height="24" rx="6" fill="var(--mint)" stroke="var(--green)"/>
+                    <rect x="54" y="50" width="38" height="5" rx="2.5" fill="var(--green)"/>
+                  </svg>
+                  <div><strong data-i18n="assistantOneTitle">Copy the connector address</strong><p data-i18n="assistantOneBody">Open Connection details below and tap Copy address. It is the same address for Claude and ChatGPT.</p></div>
+                </li>
+                <li>
+                  <svg class="setup-art" viewBox="0 0 120 80" role="img" aria-labelledby="asst2-title">
+                    <title id="asst2-title" data-i18n="assistantTwoTitle">Add it as a custom connector</title>
+                    <rect x="10" y="12" width="100" height="58" rx="8" fill="var(--paper)" stroke="var(--line)"/>
+                    <rect x="18" y="22" width="40" height="5" rx="2.5" fill="var(--line)"/>
+                    <rect x="18" y="34" width="84" height="12" rx="4" fill="var(--cream)" stroke="var(--line)"/>
+                    <circle cx="94" cy="58" r="9" fill="var(--green)"/>
+                    <path d="M94 53v10M89 58h10" stroke="var(--paper)" stroke-width="2.5" stroke-linecap="round"/>
+                  </svg>
+                  <div><strong data-i18n="assistantTwoTitle">Add it as a custom connector</strong><p data-i18n="assistantTwoBody">Use the steps for your assistant below. Leave any advanced OAuth fields empty.</p></div>
+                </li>
+                <li>
+                  <svg class="setup-art" viewBox="0 0 120 80" role="img" aria-labelledby="asst3-title">
+                    <title id="asst3-title" data-i18n="assistantThreeTitle">Sign in here and approve</title>
+                    <rect x="22" y="10" width="76" height="60" rx="8" fill="var(--paper)" stroke="var(--line)"/>
+                    <rect x="32" y="22" width="56" height="8" rx="4" fill="var(--cream)"/>
+                    <rect x="32" y="36" width="56" height="8" rx="4" fill="var(--cream)"/>
+                    <rect x="32" y="52" width="56" height="10" rx="5" fill="var(--green)"/>
+                    <path d="M52 57l4 4 10-10" stroke="var(--paper)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  <div><strong data-i18n="assistantThreeTitle">Sign in here and approve</strong><p data-i18n="assistantThreeBody">Your assistant sends you back here to sign in once and approve. It never sees your Garmin or Workout Relay password.</p></div>
+                </li>
+              </ol>
+            </div>
+
+            <details class="disclosure" id="claude-guide">
+              <summary><span data-i18n="inClaude">In Claude</span><span id="claude-badge" class="badge hidden" data-i18n="connectedBadge">Connected</span></summary>
+              <ol class="workflow">
+                <li data-i18n="claudeStep1">Open Settings, then Connectors, and choose Add custom connector.</li>
+                <li data-i18n="claudeStep2">Paste the address above and add it. Leave the advanced OAuth fields empty.</li>
+                <li data-i18n="claudeStep3">Adding a connector may need a browser rather than the phone app; once added it works in any chat.</li>
+              </ol>
+            </details>
+            <details class="disclosure" id="chatgpt-guide">
+              <summary><span data-i18n="inChatgpt">In ChatGPT</span><span id="chatgpt-badge" class="badge hidden" data-i18n="connectedBadge">Connected</span></summary>
+              <ol class="workflow">
+                <li data-i18n="chatgptStep1">Paid plans: open Settings, then Security and login, and turn on Developer mode. Connectors then accept a custom server address.</li>
+                <li data-i18n="chatgptStep2">Add the address above as a custom connector and approve the sign-in.</li>
+                <li data-i18n="chatgptStep3">Free plans do not offer custom connectors. Use the Plans tab on this site, which needs no connector.</li>
+              </ol>
+            </details>
+
             <details class="disclosure">
               <summary data-i18n="connectionSetup">Connection details</summary>
             <div class="inline-form">
@@ -175,6 +307,11 @@
       <button id="disconnect-garmin" class="button danger wide" type="button" data-i18n="disconnectGarmin">Disconnect and delete tokens</button>
     </div>
     <form id="garmin-login-form">
+      <details class="setup-help">
+        <summary data-i18n="needHelp">Need help connecting?</summary>
+        <p data-i18n="setupOneBody">You need your Garmin email and password. If you sign in to Garmin with Apple or Google instead, there is no password for us to use: open Garmin account settings and set one first. This is the most common reason connecting fails.</p>
+        <p data-i18n="setupTwoBody">If your Garmin account uses two-factor authentication, Garmin sends a code by email or text. Type it on the next screen. The attempt expires after five minutes; start again if it does.</p>
+      </details>
       <div class="notice warning"><strong data-i18n="beforeConnecting">Before connecting</strong><p data-i18n="garminDisclosure">This uses an unofficial Garmin integration. Your credentials pass through Workout Relay once and are not stored. Encrypted session tokens provide ongoing account access.</p><p data-i18n="garminTrustBoundary">Because the operator controls the hosted server, use this service only if you trust its operator. Encryption protects stored data, but cannot protect against malicious server code.</p></div>
       <label><span data-i18n="garminEmail">Garmin email</span><input id="garmin-email" type="email" autocomplete="username" required></label>
       <label><span data-i18n="garminPassword">Garmin password</span><input id="garmin-password" type="password" autocomplete="current-password" required></label>
