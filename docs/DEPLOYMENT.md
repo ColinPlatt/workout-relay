@@ -64,7 +64,9 @@ that workout retries it. Users should not remove recovery markers from
 unfinished workouts.
 
 Shutdown drains the active Garmin thread before releasing ownership, bounded by
-a 45-second deadline inside Render's 60-second window. Past the deadline a
+a 25-second deadline. Free Render instances reject `maxShutdownDelaySeconds`, so
+the platform's default 30-second window applies; raise both together on a paid
+plan if uploads need longer to settle. Past the deadline a
 forced kill is safe: the journal survives, and PostgreSQL releases the advisory
 lock when the connection dies. Uploads need PostgreSQL or file-backed SQLite on
 a Unix host; on other platforms, run the Docker image or point `DATABASE_URL` at

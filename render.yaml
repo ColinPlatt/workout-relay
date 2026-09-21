@@ -9,7 +9,8 @@ services:
     plan: free
     autoDeployTrigger: checksPass
     healthCheckPath: /readyz
-    maxShutdownDelaySeconds: 60
+    # maxShutdownDelaySeconds is rejected on free instances, so the platform
+    # default of 30s applies; SHUTDOWN_DRAIN_SECONDS is set below that.
     envVars:
       - key: APP_ENV
         value: production

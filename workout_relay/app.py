@@ -42,8 +42,9 @@ from .workouts import build_workout, content_hash
 
 logger = logging.getLogger(__name__)
 
-# Render allows 60s; leave headroom, and rely on the journal past the deadline.
-SHUTDOWN_DRAIN_SECONDS = 45
+# Free Render instances cannot raise the 30s shutdown window, so stay inside it
+# and rely on the journal past the deadline.
+SHUTDOWN_DRAIN_SECONDS = 25
 
 SESSION_COOKIE = "workout_relay_session"
 CSRF_COOKIE = "workout_relay_csrf"
