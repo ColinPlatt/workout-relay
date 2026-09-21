@@ -5,6 +5,15 @@
 Workout Relay uses Garmin's unofficial Connect endpoints. This is a
 **trust-based hosted integration**, not delegated OAuth.
 
+### Activity metrics
+
+Detailed reads return lap splits and, on request, the sample series behind
+Garmin's own charts. Garmin is asked for it with `maxPolylineSize=0`, so the
+route is not fetched at all, and both shapes are built from an allowlist of
+named metrics: a key Garmin adds later, or a positional one such as
+`directLatitude`, is dropped rather than forwarded. Nothing is stored; only
+the activity IDs already shown to the assistant are kept, for 24 hours.
+
 ### Where Garmin tokens live
 
 The person chooses when connecting. Under **this visit only** the encrypted

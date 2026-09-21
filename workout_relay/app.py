@@ -731,11 +731,18 @@ def create_app(
             raise api_error(exc.status, exc.code) from None
 
     @app.get("/api/v1/activities/{activity_id}", tags=["Activities"])
-    async def get_activity(activity_id: str, current: Actor = Depends(actor)):
+    async def get_activity(
+        activity_id: str,
+        samples: int | None = None,
+        laps: bool = True,
+        current: Actor = Depends(actor),
+    ):
         if "activities:read" not in current.scopes:
             raise api_error(403, "scope_required")
         try:
-            return await drain_thread(activities.get, current.user.id, activity_id)
+            return await drain_thread(
+                activities.get, current.user.id, activity_id, samples, laps
+            )
         except ActivityError as exc:
             raise api_error(exc.status, exc.code) from None
 

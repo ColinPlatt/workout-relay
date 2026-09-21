@@ -62,6 +62,112 @@ def activity_json(data: dict) -> dict:
     return result
 
 
+# Garmin's sample keys, and what we call them. Anything absent from this map
+# is dropped, so a key added by Garmin later - or a positional one such as
+# directLatitude - cannot reach an assistant by default.
+SERIES_METRICS = {
+    "sumDuration": ("elapsed_s", 1.0),
+    "sumMovingDuration": ("moving_s", 1.0),
+    "sumDistance": ("distance_m", 1.0),
+    "directHeartRate": ("heart_rate_bpm", 1.0),
+    "directSpeed": ("speed_m_s", 1.0),
+    "directElevation": ("elevation_m", 1.0),
+    "directRunCadence": ("cadence_spm", 1.0),
+    "directDoubleCadence": ("cadence_spm", 1.0),
+    "directPower": ("power_w", 1.0),
+    "directAirTemperature": ("temperature_c", 1.0),
+    "directVerticalOscillation": ("vertical_oscillation_cm", 1.0),
+    "directGroundContactTime": ("ground_contact_ms", 1.0),
+    "directStrideLength": ("stride_length_cm", 1.0),
+    "directFractionalCadence": ("fractional_cadence", 1.0),
+}
+# Laps carry their own start coordinates, so they are allowlisted too.
+LAP_METRICS = {
+    "distance": "distance_m", "duration": "duration_s", "movingDuration": "moving_duration_s",
+    "averageSpeed": "average_speed_m_s", "maxSpeed": "max_speed_m_s",
+    "averageHR": "average_heart_rate_bpm", "maxHR": "max_heart_rate_bpm",
+    "elevationGain": "elevation_gain_m", "elevationLoss": "elevation_loss_m",
+    "calories": "calories_kcal", "averageRunCadence": "average_cadence_spm",
+    "averagePower": "average_power_w", "maxPower": "max_power_w",
+    "groundContactTime": "ground_contact_ms", "strideLength": "stride_length_cm",
+}
+MAX_SERIES_SAMPLES = 1000
+DEFAULT_SERIES_SAMPLES = 300
+
+
+def _number(value):
+    return value if type(value) in (int, float) and math.isfinite(value) else None
+
+
+def series_json(data: dict, requested: int) -> dict:
+    """Turn Garmin's chart payload into named columns, without location.
+
+    Columns are built from the allowlist, so the row arrays never contain a
+    value we have not named. Rows carry nulls rather than gaps, because a
+    missing metric and a zero mean different things to a reader.
+    """
+    if not isinstance(data, dict):
+        raise ActivityError("garmin_activity_response_invalid")
+    descriptors = data.get("metricDescriptors")
+    rows = data.get("activityDetailMetrics")
+    if not isinstance(descriptors, list) or not isinstance(rows, list):
+        raise ActivityError("garmin_activity_response_invalid")
+
+    wanted = {}
+    for descriptor in descriptors:
+        if not isinstance(descriptor, dict):
+            continue
+        key, index = descriptor.get("key"), descriptor.get("metricsIndex")
+        named = SERIES_METRICS.get(key)
+        if named and type(index) is int and 0 <= index < 64 and named[0] not in wanted:
+            wanted[named[0]] = index
+
+    columns = list(wanted)
+    samples = []
+    for row in rows[:MAX_SERIES_SAMPLES]:
+        metrics = row.get("metrics") if isinstance(row, dict) else None
+        if not isinstance(metrics, list):
+            continue
+        samples.append([
+            _number(metrics[index]) if index < len(metrics) else None
+            for index in (wanted[name] for name in columns)
+        ])
+    pace = [
+        round(1000 / value, 1) if (value := row[columns.index("speed_m_s")]) else None
+        for row in samples
+    ] if "speed_m_s" in columns else None
+    if pace is not None:
+        columns.append("pace_s_per_km")
+        for row, value in zip(samples, pace):
+            row.append(value)
+    return {
+        "columns": columns,
+        "samples": samples,
+        "sample_count": len(samples),
+        "requested_samples": requested,
+        "note": "No GPS. Null means the metric was not recorded, not zero.",
+    }
+
+
+def laps_json(data: dict) -> list[dict]:
+    if not isinstance(data, dict):
+        raise ActivityError("garmin_activity_response_invalid")
+    laps = data.get("lapDTOs")
+    if not isinstance(laps, list):
+        raise ActivityError("garmin_activity_response_invalid")
+    result = []
+    for index, lap in enumerate(laps[:200], 1):
+        if not isinstance(lap, dict):
+            continue
+        entry = {"lap": lap.get("lapIndex") if type(lap.get("lapIndex")) is int else index}
+        for source, name in LAP_METRICS.items():
+            entry[name] = _number(lap.get(source))
+        speed = entry["average_speed_m_s"]
+        entry["average_pace_s_per_km"] = round(1000 / speed, 1) if speed else None
+        result.append(entry)
+    return result
+
+
 class ActivityService:
     def __init__(self, database, tokens, gateway):
         # `tokens` honours the account's retention choice: a visit-only
@@ -76,16 +182,27 @@ class ActivityService:
             raise ActivityError("invalid_activity_query", 422)
         return self._read(user_id, None, limit, start, sport)
 
-    def get(self, user_id: str, activity_id: str):
+    def get(self, user_id: str, activity_id: str, samples: int | None = None, laps: bool = True):
+        """One activity: summary, its laps, and optionally the sample series.
+
+        The series is what a FIT file would have carried, minus location, and
+        it is the reason this returns parsed data rather than a file: an
+        assistant can read JSON on any platform, while binary attachments do
+        not survive every client.
+        """
         if not re.fullmatch(r"[1-9][0-9]{0,19}", activity_id):
             raise ActivityError("invalid_activity_id", 422)
-        return self._read(user_id, activity_id)
+        if samples is not None and (type(samples) is not int or not 1 <= samples <= MAX_SERIES_SAMPLES):
+            raise ActivityError("invalid_activity_query", 422)
+        if type(laps) is not bool:
+            raise ActivityError("invalid_activity_query", 422)
+        return self._read(user_id, activity_id, samples=samples, laps=laps)
 
-    def _read(self, user_id, activity_id, limit=5, start=0, sport=None):
+    def _read(self, user_id, activity_id, limit=5, start=0, sport=None, samples=None, laps=False):
         if not self.limiter.allow(user_id, 20, 60):
             raise ActivityError("rate_limited", 429)
         try:
-            return self._read_owned(user_id, activity_id, limit, start, sport)
+            return self._read_owned(user_id, activity_id, limit, start, sport, samples, laps)
         except ActivityError:
             raise
         except Exception:
@@ -93,7 +210,7 @@ class ActivityService:
             # call itself. Never forward their potentially sensitive details.
             raise ActivityError("garmin_activity_read_failed") from None
 
-    def _read_owned(self, user_id, activity_id, limit, start, sport):
+    def _read_owned(self, user_id, activity_id, limit, start, sport, samples=None, laps=False):
         # Use the same cross-process lock as uploads to serialize Garmin token
         # refresh. The lock and all DB operations live in this thread, even if
         # the async caller is cancelled. No background thread releases it early.
@@ -136,6 +253,16 @@ class ActivityService:
                         if activity["id"] != activity_id:
                             raise ActivityError("garmin_activity_response_invalid")
                         result = {"activity": activity}
+                        # Both ride on the session already opened above, so a
+                        # detailed read is one Garmin sign-in, not three.
+                        if laps:
+                            owned()
+                            result["laps"] = laps_json(session.activity_laps(activity_id))
+                        if samples:
+                            owned()
+                            result["series"] = series_json(
+                                session.activity_series(activity_id, samples), samples
+                            )
                 except ActivityError as exc:
                     error = exc
                 except GarminError as exc:

@@ -98,7 +98,11 @@ files; completed-activity reading currently returns JSON metrics, not files.
   API keys require `activities:read`; existing keys/grants are not upgraded.
 - Results include distance, duration, pace, heart rate, elevation, power and
   training effect where available. Units are in field names; missing values
-  are `null`. No GPS tracks, FIT/TCX files, or lap/time-series data are returned.
+  are `null`. A detailed read also returns lap splits and, when `samples` is
+  given, the sample-by-sample series Garmin records (heart rate, pace,
+  elevation, cadence, power, temperature) up to 1000 points. No GPS tracks and
+  no FIT/TCX files are served: the route is never fetched, and parsed JSON is
+  the only delivery that works on every assistant.
 - Existing assistant connections need fresh consent: remove and re-add the
   connector, sign in, and approve activity access. A token refresh cannot add
   permission. Revoke the old connection under **Assistants** if still listed.

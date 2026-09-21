@@ -233,7 +233,7 @@ def build_connector(
             # and refreshed-token persistence, including caller cancellation.
             payload = await asyncio.to_thread(
                 activities.get if detail is not None else activities.list,
-                user_id, **({"activity_id": detail} if detail is not None else query),
+                user_id, **({"activity_id": detail, **query} if detail is not None else query),
             )
             return _ok(payload)
         except ActivityError as exc:
@@ -248,11 +248,16 @@ def build_connector(
         return await read_activity(limit=limit, start=start, sport=sport)
 
     @server.tool(description=(
-        "Read metrics for a completed activity. Requires activities:read and an id "
-        "returned by this account's list_activities within the last 24 hours. "
-        "Missing metrics are null. No GPS, FIT or TCX files are returned."
+        "Read a completed activity: whole-activity metrics, its laps, and "
+        "optionally the sample-by-sample series (heart rate, pace, elevation, "
+        "cadence, power, temperature over time) that a FIT file would carry. "
+        "Set samples to the number of points wanted, up to 1000; omit it for "
+        "summary and laps only, which is much smaller. Requires "
+        "activities:read and an id from this account's list_activities within "
+        "the last 24 hours. Missing metrics are null, never zero. Location is "
+        "never included and no files are served."
     ))
-    async def get_activity(activity_id: str) -> str:
-        return await read_activity(detail=activity_id)
+    async def get_activity(activity_id: str, samples: int | None = None, laps: bool = True) -> str:
+        return await read_activity(detail=activity_id, samples=samples, laps=laps)
 
     return server

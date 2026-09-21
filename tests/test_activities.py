@@ -185,3 +185,65 @@ def test_live_adapter_uses_bounded_client_methods_and_sanitizes_errors():
         session.get_activity("123")
     assert exc.value.code == "garmin_rate_limited"
     assert "private" not in str(exc.value)
+
+
+@pytest.mark.anyio
+async def test_a_detailed_read_carries_laps_and_the_sample_series(connector_settings):
+    """The series is what a FIT file would have held, minus location."""
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            csrf = await register_account(client)
+            await connect_garmin(client, csrf)
+            activity = (await client.get("/api/v1/activities")).json()["items"][0]
+
+            detailed = await client.get(
+                f"/api/v1/activities/{activity['id']}", params={"samples": 300}
+            )
+            assert detailed.status_code == 200, detailed.text
+            body = detailed.json()
+
+            assert body["activity"]["id"] == activity["id"]
+            laps = body["laps"]
+            assert len(laps) == 2
+            assert laps[0]["average_heart_rate_bpm"] == 142.0
+            assert laps[0]["average_pace_s_per_km"] == 300.3
+
+            series = body["series"]
+            assert series["sample_count"] > 0
+            assert "heart_rate_bpm" in series["columns"]
+            assert "elevation_m" in series["columns"]
+            assert "pace_s_per_km" in series["columns"]
+            assert len(series["samples"][0]) == len(series["columns"])
+
+            # Whatever Garmin sends, location never appears in either shape.
+            flattened = json.dumps(body)
+            assert "48.8566" not in flattened and "2.3522" not in flattened
+            for column in series["columns"]:
+                assert "lat" not in column and "lon" not in column
+            for lap in laps:
+                assert not any("lat" in key or "lon" in key for key in lap)
+
+
+@pytest.mark.anyio
+async def test_the_series_is_opt_in_and_bounded(connector_settings):
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            csrf = await register_account(client)
+            await connect_garmin(client, csrf)
+            activity = (await client.get("/api/v1/activities")).json()["items"][0]
+
+            # Omitted: laps but no series, which keeps a listing cheap to read.
+            plain = (await client.get(f"/api/v1/activities/{activity['id']}")).json()
+            assert "series" not in plain and "laps" in plain
+
+            # Laps can be declined too.
+            bare = (await client.get(
+                f"/api/v1/activities/{activity['id']}", params={"laps": "false"})).json()
+            assert "laps" not in bare and "series" not in bare
+
+            for bad in (0, -1, 5000):
+                refused = await client.get(
+                    f"/api/v1/activities/{activity['id']}", params={"samples": bad})
+                assert refused.status_code == 422, bad

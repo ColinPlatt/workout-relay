@@ -59,6 +59,10 @@ class GarminSession(Protocol):
 
     def get_activity(self, activity_id: str) -> dict: ...
 
+    def activity_series(self, activity_id: str, samples: int) -> dict: ...
+
+    def activity_laps(self, activity_id: str) -> dict: ...
+
     def publish(self, workout: Any, date: str, existing: dict | None, *, progress: dict, checkpoint: Callable) -> Published: ...
 
     def cleanup_marker(self, workout: Any, workout_id: str, *, progress: dict, checkpoint: Callable) -> None: ...
@@ -209,6 +213,16 @@ class LiveGarminSession:
 
     def get_activity(self, activity_id: str) -> dict:
         return self._read_activity(self._client.get_activity, activity_id)
+
+    def activity_series(self, activity_id: str, samples: int) -> dict:
+        # maxpoly=0 asks Garmin not to send the GPS polyline at all, so the
+        # route never reaches this process, let alone an assistant.
+        return self._read_activity(
+            self._client.get_activity_details, activity_id, maxchart=samples, maxpoly=0
+        )
+
+    def activity_laps(self, activity_id: str) -> dict:
+        return self._read_activity(self._client.get_activity_splits, activity_id)
 
     @staticmethod
     def _read_activity(function, *args, **kwargs):
@@ -502,6 +516,28 @@ class MockGarminSession:
                   "startTimeGMT": "2026-09-20 06:00:00", "distance": 5000.0,
                   "duration": 1800.0, "averageSpeed": 5000 / 1800, "averageHR": 140}]
         return (items if sport in (None, "running") else [])[start:start + limit]
+
+    def activity_series(self, activity_id: str, samples: int) -> dict:
+        self.get_activity(activity_id)  # same ownership check as a detail read
+        keys = ["directTimestamp", "sumDuration", "sumDistance", "directHeartRate",
+                "directSpeed", "directElevation", "directLatitude", "directLongitude"]
+        rows = []
+        for index in range(min(samples, 12)):
+            rows.append({"metrics": [
+                1758348000000 + index * 60000, float(index * 60), float(index * 250),
+                140.0 + index, 2.8, 35.0 + index, 48.8566, 2.3522]})
+        return {"metricDescriptors": [{"key": key, "metricsIndex": i} for i, key in enumerate(keys)],
+                "activityDetailMetrics": rows}
+
+    def activity_laps(self, activity_id: str) -> dict:
+        self.get_activity(activity_id)
+        return {"lapDTOs": [
+            {"lapIndex": 1, "distance": 1000.0, "duration": 300.0, "averageHR": 142.0,
+             "maxHR": 150.0, "averageSpeed": 3.33, "elevationGain": 5.0,
+             "startLatitude": 48.8566, "startLongitude": 2.3522},
+            {"lapIndex": 2, "distance": 1000.0, "duration": 290.0, "averageHR": 149.0,
+             "maxHR": 158.0, "averageSpeed": 3.45, "elevationGain": 3.0},
+        ]}
 
     def get_activity(self, activity_id: str) -> dict:
         item = self.list_activities(0, 1, None)[0]
