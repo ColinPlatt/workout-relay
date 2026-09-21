@@ -37,6 +37,11 @@ from .security import hash_token, opaque_token
 logger = logging.getLogger(__name__)
 
 SCOPES = ("plans:read", "plans:write", "activities:read")
+# What a client gets when it asks for nothing. RFC 6749 section 3.3 requires a
+# defined default, and granting none leaves a connection that authorizes fine
+# and then fails every call. Activity access is deliberately not included: it
+# covers health measurements and has to be asked for.
+DEFAULT_SCOPES = ("plans:read", "plans:write")
 CONSENT_PATH = "/oauth/consent"
 AUTHORIZATION_CODE_TTL = timedelta(minutes=10)
 ACCESS_TOKEN_TTL = timedelta(hours=1)
@@ -84,11 +89,15 @@ class RelayOAuthProvider(OAuthAuthorizationServerProvider):
         No grant exists until someone logs in and approves, so an authorize
         call on its own can never produce a usable code.
         """
+        requested = list(params.scopes or [])
+        if not requested:
+            registered = scope_list(client.scope)
+            requested = [scope for scope in DEFAULT_SCOPES if not registered or scope in registered]
         with self.database.session() as db:
             grant = OAuthGrant(
                 client_id=client.client_id,
                 stage="pending",
-                scopes=" ".join(params.scopes or []),
+                scopes=" ".join(requested),
                 code_challenge=params.code_challenge or "",
                 redirect_uri=str(params.redirect_uri),
                 redirect_uri_explicit=params.redirect_uri_provided_explicitly,

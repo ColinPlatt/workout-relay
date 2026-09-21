@@ -451,3 +451,78 @@ async def test_ui_and_llm_instructions_both_carry_the_connector_address(connecto
                 assert info["connector"]["url"] == "http://localhost:8000/mcp/"
                 assert any(marker in step for step in info["connector"]["setup"])
                 assert "submit_plan" in info["connector"]["preferred"]
+
+
+@pytest.mark.anyio
+async def test_a_client_that_requests_no_scope_still_works(connector_settings):
+    """RFC 6749 requires a default when scope is omitted.
+
+    Granting none produced a connection that authorized successfully and then
+    failed every call with scope_required, which is what a connector reports
+    as "authorized, but the server returned an error".
+    """
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            csrf = await register_account(client)
+            registration = await register_client(client)
+            verifier, challenge = verifier_pair()
+
+            # No scope parameter at all.
+            response = await client.get(
+                "/authorize",
+                params={
+                    "client_id": registration["client_id"],
+                    "redirect_uri": REDIRECT,
+                    "response_type": "code",
+                    "code_challenge": challenge,
+                    "code_challenge_method": "S256",
+                    "state": "xyz",
+                },
+            )
+            grant_id = parse_qs(urlsplit(response.headers["location"]).query)["request"][0]
+
+            page = await client.get("/oauth/consent", params={"request": grant_id})
+            # The person is told what they are approving, not shown an empty list.
+            assert "send workout plans" in page.text
+
+            approved = await client.post(
+                "/oauth/consent", data={"request": grant_id, "action": "approve", "csrf": csrf}
+            )
+            code = parse_qs(urlsplit(approved.headers["location"]).query)["code"][0]
+            tokens = await exchange(client, registration, code, verifier)
+            assert tokens.status_code == 200
+            assert tokens.json()["scope"] == "plans:read plans:write"
+
+            # The whole point: a tool call works.
+            result = await call_tool(client, tokens.json()["access_token"], "get_garmin_status")
+            body = json.loads(result.json()["result"]["content"][0]["text"])
+            assert body["ok"] is True
+
+
+@pytest.mark.anyio
+async def test_health_data_is_never_granted_by_default(connector_settings):
+    """activities:read covers health measurements, so it must be asked for."""
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            csrf = await register_account(client)
+            registration = await register_client(client)
+            verifier, challenge = verifier_pair()
+            response = await client.get(
+                "/authorize",
+                params={
+                    "client_id": registration["client_id"],
+                    "redirect_uri": REDIRECT,
+                    "response_type": "code",
+                    "code_challenge": challenge,
+                    "code_challenge_method": "S256",
+                },
+            )
+            grant_id = parse_qs(urlsplit(response.headers["location"]).query)["request"][0]
+            approved = await client.post(
+                "/oauth/consent", data={"request": grant_id, "action": "approve", "csrf": csrf}
+            )
+            code = parse_qs(urlsplit(approved.headers["location"]).query)["code"][0]
+            tokens = await exchange(client, registration, code, verifier)
+            assert "activities:read" not in tokens.json()["scope"]
