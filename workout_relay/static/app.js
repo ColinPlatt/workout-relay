@@ -1,5 +1,8 @@
 const translations = {
   en: {
+    workflowCaption: "Plan in your chat. Run with your watch. Review together.",
+    aboutAutomatic: "After syncing, ask your chat to review your run. Workout Relay does not start chats or send automatic post-run feedback.",
+    aboutGoodToKnow: "A few things to know", aboutFullPage: "Open the full guide",
     pastePlan: "Or paste a plan", helpAssistant: "Help my assistant create a plan",
     copyHelp: "Copy these instructions into your chat, then ask for a workout plan. No passwords or keys are included.",
     connectionSetup: "Connection details", advancedAccess: "Advanced: API access",
@@ -42,6 +45,17 @@ const translations = {
     storageVisit: "This visit only", storageKeep: "Until you disconnect",
     confirmClearHistory: "Clear your plan history? Finished submissions are deleted. Workouts already in Garmin are untouched, and sending the same plan again will still update them rather than create duplicates.",
     historyCleared: "History cleared: {removed} removed.",
+    about: "About", aboutHow: "How it works", aboutTitle: "How Workout Relay fits together",
+    aboutIntro: "Your training conversation and your watch, joined up. You plan with an assistant you already use, the sessions arrive on your Garmin calendar in advance, and once you have run them the same conversation can look at how they went.",
+    aboutOneTitle: "Plan in the chat",
+    aboutOneBody: "Tell your connected Claude or ChatGPT assistant your goal and the days you can run. Ask it to create a running plan and send it through Workout Relay.",
+    aboutTwoTitle: "Sent to Garmin, scheduled ahead",
+    aboutTwoBody: "Workout Relay validates the plan and puts each session on your Garmin calendar on its date, days or weeks in advance. Send a corrected plan and the same sessions are updated rather than duplicated.",
+    aboutThreeTitle: "Run it from your watch",
+    aboutThreeBody: "Sync a compatible Garmin device with Garmin Connect to download upcoming workouts. Follow the steps on your watch, then sync again to upload your completed activity.",
+    aboutFourTitle: "Review it in the same chat",
+    aboutFourBody: "With activity access enabled, ask your chat to retrieve your latest run: pace, distance, duration and heart rate where available. It can give feedback and propose changes to your next sessions, without exporting a file.",
+    aboutLimits: "Custom-connector availability depends on your assistant account. Your Garmin device must support the scheduled workouts. This service uses an unofficial interface and is not affiliated with Garmin. With This visit only, reconnect when your session expires. You can also upload a plan without a connector.",
     connectAssistant: "Connect an assistant", connectorAddress: "Connector address", copyAddress: "Copy address",
     connectAssistantHelp: "Let your assistant send plans and, with your permission, review past runs. Your passwords stay private.",
     inClaude: "In Claude", inChatgpt: "In ChatGPT",
@@ -69,7 +83,7 @@ const translations = {
     retentionKeepActive: "Kept connected. Encrypted session tokens are stored until you disconnect.",
     retentionChange: "To change this, disconnect and connect again.",
     privacy: "Privacy", privacyTitle: "What is stored, and why", readPrivacy: "What is stored", gotIt: "Got it",
-    privacyNoteText: "Workout Relay stores only what it needs to work: your account email, a password hash, and the plans you send. Cookies here are strictly necessary for signing in, so there is nothing to opt into. You choose where your Garmin session is kept when you connect it.",
+    privacyNoteText: "Your account and plans are saved to run the service. You choose whether Garmin stays connected. See what is stored below.",
     privacyKeptTitle: "Kept", privacyNeverTitle: "Never kept", privacyControlTitle: "Your controls",
     privacyKeptAccount: "Your account email and a password hash, so you can sign in.",
     privacyKeptPlans: "Plans you send and their results, deleted automatically after the retention period. Clear history under Plans removes them sooner.",
@@ -87,7 +101,7 @@ const translations = {
     privacyCookies: "Cookies: one signed-in session cookie and one CSRF cookie, both strictly necessary, plus your language choice stored in this browser. No consent banner is needed for those, and nothing else is set.",
     error_garmin_visit_expired: "Your Garmin session has expired for this visit. Connect Garmin again to continue.",
     setupStep: "Set up", setupTitle: "Connect Garmin to send your first plan",
-    setupIntro: "You sign in to Garmin once, here. There is nothing to copy from Garmin Connect: Workout Relay uses your Garmin account sign-in, and never stores the password.",
+    setupIntro: "Connect your Garmin account to send workouts straight to your calendar.",
     setupOneTitle: "Check how you sign in to Garmin",
     setupOneBody: "You need your Garmin email and password. If you sign in to Garmin with Apple or Google instead, there is no password for us to use: open Garmin account settings and set one first. This is the most common reason connecting fails.",
     setupTwoTitle: "Enter the verification code, if asked",
@@ -147,6 +161,9 @@ const translations = {
     expanded_steps: "{path}: repeat expansion creates {count} steps; the maximum is {maximum}."
   },
   fr: {
+    workflowCaption: "Planifiez dans le chat. Courez avec votre montre. Faites le bilan ensemble.",
+    aboutAutomatic: "Après la synchronisation, demandez à votre assistant d'analyser votre course. Workout Relay ne lance pas de conversation ni de bilan automatique après une course.",
+    aboutGoodToKnow: "Bon à savoir", aboutFullPage: "Ouvrir le guide complet",
     pastePlan: "Ou coller un plan", helpAssistant: "Aider mon assistant à créer un plan",
     copyHelp: "Collez ces instructions dans votre conversation, puis demandez un plan. Aucun mot de passe ni aucune clé ne sont inclus.",
     connectionSetup: "Détails de connexion", advancedAccess: "Avancé : accès API",
@@ -189,6 +206,17 @@ const translations = {
     storageVisit: "Cette visite uniquement", storageKeep: "Jusqu'à déconnexion",
     confirmClearHistory: "Effacer votre historique de plans ? Les envois terminés sont supprimés. Les séances déjà dans Garmin ne sont pas touchées, et renvoyer le même plan les mettra à jour au lieu de créer des doublons.",
     historyCleared: "Historique effacé : {removed} supprimé(s).",
+    about: "À propos", aboutHow: "Comment ça marche", aboutTitle: "Comment Workout Relay s'articule",
+    aboutIntro: "Votre conversation d'entraînement et votre montre, reliées. Vous planifiez avec l'assistant que vous utilisez déjà, les séances arrivent à l'avance dans votre calendrier Garmin, et une fois courues, la même conversation peut examiner ce qu'elles ont donné.",
+    aboutOneTitle: "Planifiez dans la conversation",
+    aboutOneBody: "Indiquez à votre assistant Claude ou ChatGPT connecté votre objectif et vos jours disponibles. Demandez-lui de créer un plan de course et de l'envoyer via Workout Relay.",
+    aboutTwoTitle: "Envoyé vers Garmin, programmé à l'avance",
+    aboutTwoBody: "Workout Relay valide le plan et place chaque séance dans votre calendrier Garmin à sa date, des jours ou des semaines à l'avance. Renvoyez un plan corrigé : les mêmes séances sont mises à jour, sans doublon.",
+    aboutThreeTitle: "Courez depuis votre montre",
+    aboutThreeBody: "Synchronisez un appareil Garmin compatible avec Garmin Connect pour récupérer les séances à venir. Suivez les étapes sur votre montre, puis synchronisez à nouveau pour transférer l'activité terminée.",
+    aboutFourTitle: "Analysez dans la même conversation",
+    aboutFourBody: "Avec l'accès aux activités, demandez à votre assistant de récupérer votre dernière course : allure, distance, durée et fréquence cardiaque selon les données disponibles. Il peut proposer un bilan et des ajustements pour la suite, sans fichier à exporter.",
+    aboutLimits: "L'accès aux connecteurs dépend de votre compte d'assistant. Votre appareil Garmin doit prendre en charge les séances programmées. Ce service indépendant utilise une interface Garmin non officielle. Avec Cette visite uniquement, reconnectez-vous à l'expiration de la session. Vous pouvez aussi importer un plan sans connecteur.",
     connectAssistant: "Connecter un assistant", connectorAddress: "Adresse du connecteur", copyAddress: "Copier l'adresse",
     connectAssistantHelp: "Votre assistant peut envoyer vos plans et, avec votre accord, consulter vos courses passées. Vos mots de passe restent privés.",
     inClaude: "Dans Claude", inChatgpt: "Dans ChatGPT",
@@ -216,7 +244,7 @@ const translations = {
     retentionKeepActive: "Connexion conservée. Les jetons chiffrés sont conservés jusqu'à votre déconnexion.",
     retentionChange: "Pour changer, déconnectez-vous puis reconnectez-vous.",
     privacy: "Confidentialité", privacyTitle: "Ce qui est conservé, et pourquoi", readPrivacy: "Ce qui est conservé", gotIt: "J'ai compris",
-    privacyNoteText: "Workout Relay ne conserve que le nécessaire : l'e-mail du compte, une empreinte du mot de passe et les plans envoyés. Les cookies utilisés sont strictement nécessaires à la connexion : il n'y a rien à accepter. Vous choisissez où votre session Garmin est conservée au moment de la connecter.",
+    privacyNoteText: "Votre compte et vos plans sont enregistrés pour faire fonctionner le service. Vous choisissez si Garmin reste connecté. Consultez les détails ci-dessous.",
     privacyKeptTitle: "Conservé", privacyNeverTitle: "Jamais conservé", privacyControlTitle: "Vos contrôles",
     privacyKeptAccount: "L'e-mail du compte et une empreinte du mot de passe, pour vous connecter.",
     privacyKeptPlans: "Les plans envoyés et leurs résultats, supprimés automatiquement après la période de conservation. « Effacer l'historique » les supprime plus tôt.",
@@ -234,7 +262,7 @@ const translations = {
     privacyCookies: "Cookies : un cookie de session et un cookie CSRF, tous deux strictement nécessaires, plus votre choix de langue conservé dans ce navigateur. Aucune bannière de consentement n'est requise pour cela, et rien d'autre n'est déposé.",
     error_garmin_visit_expired: "Votre session Garmin a expiré pour cette visite. Reconnectez Garmin pour continuer.",
     setupStep: "Mise en route", setupTitle: "Connectez Garmin pour envoyer votre premier plan",
-    setupIntro: "Vous vous connectez à Garmin une seule fois, ici. Rien à copier depuis Garmin Connect : Workout Relay utilise vos identifiants Garmin et ne conserve jamais le mot de passe.",
+    setupIntro: "Connectez votre compte Garmin pour envoyer vos séances directement dans votre calendrier.",
     setupOneTitle: "Vérifiez votre mode de connexion Garmin",
     setupOneBody: "Il vous faut votre e-mail et votre mot de passe Garmin. Si vous vous connectez à Garmin avec Apple ou Google, aucun mot de passe n'existe de notre côté : ouvrez les réglages de votre compte Garmin et définissez-en un. C'est la cause d'échec la plus fréquente.",
     setupTwoTitle: "Saisissez le code de vérification, si demandé",
@@ -305,20 +333,32 @@ function interpolate(template, values = {}) {
 function t(key, values) { return interpolate(translations[state.language][key] || translations.en[key] || key, values); }
 
 function chooseInitialLanguage() {
+  const query = new URLSearchParams(window.location.search).get("lang");
+  if (["en", "fr"].includes(query)) return query;
+  const cookie = document.cookie.match(/(?:^|; )workout_relay_language=(en|fr)(?:;|$)/);
+  if (cookie) return cookie[1];
   const override = localStorage.getItem("workoutRelayLanguage");
   if (["en", "fr"].includes(override)) return override;
-  return navigator.languages?.some((lang) => lang.toLowerCase().startsWith("fr")) ? "fr" : "en";
+  for (const tag of navigator.languages || [navigator.language]) {
+    const language = (tag || "").toLowerCase().split("-")[0];
+    if (["en", "fr"].includes(language)) return language;
+  }
+  return "en";
 }
 
 function applyLanguage(language, persist = false) {
   state.language = language === "fr" ? "fr" : "en";
   document.documentElement.lang = state.language;
-  $("#language").value = state.language;
+  $$("[data-language-select]").forEach(element => { element.value = state.language; });
+  $$("[data-about-link]").forEach(element => { element.href = `/about?lang=${state.language}`; });
   $$('[data-i18n]').forEach((element) => { element.textContent = t(element.dataset.i18n); });
   $$('[data-i18n-placeholder]').forEach((element) => { element.placeholder = t(element.dataset.i18nPlaceholder); });
   $$('[data-i18n-aria]').forEach((element) => { element.setAttribute("aria-label", t(element.dataset.i18nAria)); });
   document.title = `Workout Relay — ${t("dashboard")}`;
-  if (persist) localStorage.setItem("workoutRelayLanguage", state.language);
+  if (persist) {
+    localStorage.setItem("workoutRelayLanguage", state.language);
+    document.cookie = `workout_relay_language=${state.language}; Path=/; Max-Age=31536000; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+  }
   setAuthMode(state.authMode);
   if (state.garmin) renderGarminStatus(state.garmin);
   if (state.user) { loadHistory(); loadKeys(); loadConnections(); }
@@ -364,6 +404,8 @@ function setBusy(button, busy) {
 
 function setAuthMode(mode) {
   state.authMode = mode;
+  $("#register-hint").classList.toggle("hidden", mode !== "register");
+  $("#register-privacy").classList.toggle("hidden", mode !== "register");
   $$('.tab').forEach((tab) => tab.classList.toggle("active", tab.dataset.authMode === mode));
   $("#auth-submit").dataset.i18n = mode === "login" ? "login" : "createAccount";
   $("#auth-submit").textContent = t($("#auth-submit").dataset.i18n);
@@ -372,12 +414,16 @@ function setAuthMode(mode) {
 }
 
 function showDashboard(user) {
+  document.body.classList.remove("auth-only");
+  showPrivacyNote();
   state.user = user;
   $("#auth-view").classList.add("hidden"); $("#dashboard").classList.remove("hidden"); $("#logout").classList.remove("hidden");
   $("#account-label").textContent = user.email;
   Promise.all([loadGarmin(), loadHistory(), loadKeys(), loadConnections()]);
 }
 function showAuth() {
+  document.body.classList.add("auth-only");
+  $("#privacy-note").classList.add("hidden");
   state.user = null;
   $("#dashboard").classList.add("hidden"); $("#auth-view").classList.remove("hidden"); $("#logout").classList.add("hidden");
 }
@@ -530,13 +576,13 @@ $$('.section-tab').forEach((tab) => tab.addEventListener("click", () => {
   $(`#section-${tab.dataset.section}`).classList.remove("hidden");
 }));
 
-$("#language").addEventListener("change", async (event) => {
+$$("[data-language-select]").forEach(select => select.addEventListener("change", async (event) => {
   applyLanguage(event.target.value, true);
   if (state.user) {
     try { state.user = await api("/api/v1/me/language", { method: "PUT", body: JSON.stringify({ language: state.language }) }); }
     catch (_) { /* Local override still works when the preference request fails. */ }
   }
-});
+}));
 
 $("#auth-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = $("#auth-submit"); setBusy(button, true); $("#auth-error").textContent = "";
@@ -688,6 +734,9 @@ $("#delete-account-form").addEventListener("submit", async (event) => {
 });
 
 $("#open-privacy").addEventListener("click", () => { showRetentionPeriods(); $("#privacy-dialog").showModal(); });
+$("#open-about").addEventListener("click", () => $("#about-dialog").showModal());
+$("#register-privacy").addEventListener("click", () => { showRetentionPeriods(); $("#privacy-dialog").showModal(); });
+$("#close-about").addEventListener("click", () => $("#about-dialog").close());
 $("#close-privacy").addEventListener("click", () => $("#privacy-dialog").close());
 $("#privacy-note-more").addEventListener("click", () => { showRetentionPeriods(); $("#privacy-dialog").showModal(); });
 $("#privacy-note-ok").addEventListener("click", () => {
@@ -715,10 +764,9 @@ function showPrivacyNote() {
 
 (async function boot() {
   applyLanguage(chooseInitialLanguage());
-  showPrivacyNote();
   try {
     const user = await api("/api/v1/me");
-    if (!localStorage.getItem("workoutRelayLanguage") && user.preferred_language) applyLanguage(user.preferred_language);
+    if (!localStorage.getItem("workoutRelayLanguage") && !document.cookie.includes("workout_relay_language=") && !new URLSearchParams(location.search).has("lang") && user.preferred_language) applyLanguage(user.preferred_language);
     showDashboard(user);
   } catch (_) { showAuth(); }
 })();

@@ -231,3 +231,22 @@ async def test_reconnecting_keeps_connected_since_and_moves_last_sign_in(onboard
 
             assert again["connected_at"] == first["connected_at"]
             assert again["last_validated_at"] >= first["last_validated_at"]
+
+
+@pytest.mark.anyio
+async def test_about_explains_the_loop_in_both_languages(onboarding_settings):
+    app = create_app(onboarding_settings)
+    async with app.router.lifespan_context(app):
+        async with await client_for(app) as client:
+            page = (await client.get("/")).text
+            script = (await client.get("/static/app.js")).text
+            assert 'id="about-dialog"' in page
+            # Details stay in the footer/About page, not in the login form.
+            assert 'id="hero-about"' not in page and 'id="open-about"' in page
+            for key in ("aboutOneTitle", "aboutTwoBody", "aboutThreeBody", "aboutFourBody"):
+                assert script.count(key) == 2, key
+                assert f'data-i18n="{key}"' in page
+            # The limits are stated on the same page as the promise.
+            assert "not affiliated with Garmin" in script
+            assert "Custom-connector availability depends on your assistant account" in script
+            assert "does not start chats or send automatic post-run feedback" in script

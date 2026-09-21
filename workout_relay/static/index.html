@@ -6,22 +6,23 @@
   <meta name="theme-color" content="#007dc5">
   <meta name="description" content="Send structured running plans to Garmin Connect.">
   <title>Workout Relay</title>
+  <link rel="icon" href="/static/runner.svg" type="image/svg+xml">
   <link rel="describedby" href="/api/v1/plan-format" type="application/json">
   <link rel="describedby" href="/api/v1/plan-schema" type="application/schema+json">
   <link rel="service-desc" href="/openapi.json" type="application/json">
   <link rel="stylesheet" href="/static/styles.css">
 </head>
-<body>
+<body class="auth-only">
   <header class="topbar">
     <a class="brand" href="/" aria-label="Workout Relay">
-      <span class="brand-icon" aria-hidden="true">WR</span>
+      <img class="brand-icon" src="/static/runner.svg" alt="" width="38" height="38">
       <span>Workout Relay</span>
     </a>
     <div class="header-actions">
       <label class="language-label" for="language" data-i18n="languageLabel">Language</label>
-      <select id="language" aria-label="Language">
-        <option value="en">English</option>
-        <option value="fr">Français</option>
+      <select id="language" data-language-select aria-label="Language" data-i18n-aria="languageLabel">
+        <option value="en">🇬🇧 English</option>
+        <option value="fr">🇫🇷 Français</option>
       </select>
       <button id="logout" class="button ghost hidden" type="button" data-i18n="logout">Log out</button>
     </div>
@@ -29,16 +30,6 @@
 
   <main>
     <section id="auth-view" class="auth-view">
-      <div class="hero">
-        <p class="eyebrow" data-i18n="heroEyebrow">Your plan. Your calendar.</p>
-        <h1 data-i18n="heroTitle">Less admin. More running.</h1>
-        <p class="hero-copy" data-i18n="heroCopy">Your training plan, straight to Garmin. Bring a plan or connect your assistant — we’ll take care of the transfer.</p>
-        <div class="trust-line">
-          <span aria-hidden="true">●</span>
-          <p data-i18n="trustLine">Garmin passwords and MFA codes are never stored. Encrypted session tokens keep you connected.</p>
-        </div>
-      </div>
-
       <section class="card auth-card" aria-labelledby="auth-heading">
         <div class="tabs" role="tablist">
           <button class="tab active" data-auth-mode="login" type="button" data-i18n="login">Log in</button>
@@ -48,7 +39,8 @@
         <form id="auth-form">
           <label><span data-i18n="email">Email</span><input id="account-email" type="email" autocomplete="email" required></label>
           <label><span data-i18n="password">Password</span><input id="account-password" type="password" minlength="12" autocomplete="current-password" required></label>
-          <p class="hint" data-i18n="passwordHint">Use at least 12 characters. This is your Workout Relay password.</p>
+          <p id="register-hint" class="hint hidden" data-i18n="passwordHint">Use at least 12 characters. This is your Workout Relay password.</p>
+          <button id="register-privacy" class="text-link hidden" type="button" data-i18n="privacy">Privacy</button>
           <button id="auth-submit" class="button primary wide" type="submit" data-i18n="login">Log in</button>
           <p id="auth-error" class="form-message error" role="alert"></p>
         </form>
@@ -73,7 +65,9 @@
       <section id="garmin-setup" class="card setup-card hidden">
         <p class="step" data-i18n="setupStep">Set up</p>
         <h2 data-i18n="setupTitle">Connect Garmin to send your first plan</h2>
-        <p class="muted compact-copy" data-i18n="setupIntro">You sign in to Garmin once, here. There is nothing to copy from Garmin Connect: Workout Relay uses your Garmin account sign-in, and never stores the password.</p>
+        <p class="muted compact-copy" data-i18n="setupIntro">Connect your Garmin account to send workouts straight to your calendar.</p>
+        <details class="disclosure setup-disclosure">
+          <summary data-i18n="needHelp">Need help connecting?</summary>
         <ol class="setup-steps">
           <li>
             <svg class="setup-art" viewBox="0 0 120 80" role="img" aria-labelledby="art1-title">
@@ -141,6 +135,7 @@
             </div>
           </li>
         </ol>
+        </details>
         <div class="setup-actions">
           <button id="setup-connect" class="button primary" type="button" data-i18n="connectGarmin">Connect Garmin</button>
           <button id="setup-privacy" class="button ghost-border" type="button" data-i18n="readPrivacy">What is stored</button>
@@ -300,6 +295,7 @@
   </main>
 
   <dialog id="garmin-dialog">
+    <div class="dialog-language"><select data-language-select aria-label="Language" data-i18n-aria="languageLabel"><option value="en">🇬🇧 English</option><option value="fr">🇫🇷 Français</option></select></div>
     <div class="dialog-heading"><div><p class="step">Garmin Connect</p><h2 data-i18n="connectGarmin">Connect Garmin</h2></div><button id="close-garmin" class="icon-button" type="button" aria-label="Close" data-i18n-aria="close">×</button></div>
     <div id="garmin-connected" class="hidden">
       <div class="connected-badge"><span>✓</span><div><strong data-i18n="garminConnected">Garmin connected</strong><small id="garmin-name"></small></div></div>
@@ -335,12 +331,69 @@
 
   <div id="toast" class="toast hidden" role="status"></div>
   <div id="privacy-note" class="privacy-note hidden" role="note">
-    <p data-i18n="privacyNoteText">Workout Relay stores only what it needs to work: your account email, a password hash, and the plans you send. Cookies here are strictly necessary for signing in, so there is nothing to opt into. You choose where your Garmin session is kept when you connect it.</p>
+    <p data-i18n="privacyNoteText">Your account and plans are saved to run the service. You choose whether Garmin stays connected. See what is stored below.</p>
     <div class="privacy-note-actions">
       <button id="privacy-note-more" class="button ghost-border" type="button" data-i18n="readPrivacy">What is stored</button>
       <button id="privacy-note-ok" class="button primary" type="button" data-i18n="gotIt">Got it</button>
     </div>
   </div>
+
+  <dialog id="about-dialog">
+    <div class="dialog-language"><select data-language-select aria-label="Language" data-i18n-aria="languageLabel"><option value="en">🇬🇧 English</option><option value="fr">🇫🇷 Français</option></select></div>
+    <div class="dialog-heading"><div><p class="step" data-i18n="about">About</p><h2 data-i18n="aboutTitle">How Workout Relay fits together</h2></div><button id="close-about" class="icon-button" type="button" aria-label="Close" data-i18n-aria="close">×</button></div>
+    <p class="muted" data-i18n="aboutIntro">Your training conversation and your watch, joined up. You plan with an assistant you already use, the sessions arrive on your Garmin calendar in advance, and once you have run them the same conversation can look at how they went.</p>
+    <ol class="setup-steps about-steps">
+      <li>
+        <svg class="setup-art" viewBox="0 0 120 80" role="img" aria-labelledby="about1-title">
+          <title id="about1-title" data-i18n="aboutOneTitle">Plan in the chat</title>
+          <rect x="10" y="14" width="66" height="30" rx="8" fill="var(--mint)" stroke="var(--line)"/>
+          <rect x="18" y="24" width="38" height="4" rx="2" fill="var(--green)"/>
+          <rect x="18" y="32" width="48" height="4" rx="2" fill="var(--line)"/>
+          <path d="M24 44l-6 9 14-9z" fill="var(--mint)" stroke="var(--line)"/>
+          <rect x="44" y="46" width="66" height="26" rx="8" fill="var(--paper)" stroke="var(--line)"/>
+          <rect x="52" y="54" width="44" height="4" rx="2" fill="var(--line)"/>
+          <rect x="52" y="62" width="30" height="4" rx="2" fill="var(--line)"/>
+        </svg>
+        <div><strong data-i18n="aboutOneTitle">Plan in the chat</strong><p data-i18n="aboutOneBody">Tell your connected Claude or ChatGPT assistant your goal and the days you can run. Ask it to create a running plan and send it through Workout Relay.</p></div>
+      </li>
+      <li>
+        <svg class="setup-art" viewBox="0 0 120 80" role="img" aria-labelledby="about2-title">
+          <title id="about2-title" data-i18n="aboutTwoTitle">Sent to Garmin, scheduled ahead</title>
+          <rect x="8" y="26" width="34" height="28" rx="7" fill="var(--paper)" stroke="var(--line)"/>
+          <path d="M46 40h26" stroke="var(--green)" stroke-width="3" stroke-linecap="round" stroke-dasharray="4 5"/>
+          <path d="M68 34l8 6-8 6" fill="none" stroke="var(--green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="78" y="16" width="34" height="48" rx="7" fill="var(--paper)" stroke="var(--line)"/>
+          <g fill="var(--line)"><rect x="84" y="26" width="9" height="8" rx="2"/><rect x="97" y="26" width="9" height="8" rx="2"/><rect x="84" y="38" width="9" height="8" rx="2"/></g>
+          <rect x="97" y="38" width="9" height="8" rx="2" fill="var(--green)"/>
+          <rect x="84" y="50" width="22" height="8" rx="2" fill="var(--mint)"/>
+        </svg>
+        <div><strong data-i18n="aboutTwoTitle">Sent to Garmin, scheduled ahead</strong><p data-i18n="aboutTwoBody">Workout Relay validates the plan and puts each session on your Garmin calendar on its date, days or weeks in advance. Send a corrected plan and the same sessions are updated rather than duplicated.</p></div>
+      </li>
+      <li>
+        <svg class="setup-art" viewBox="0 0 120 80" role="img" aria-labelledby="about3-title">
+          <title id="about3-title" data-i18n="aboutThreeTitle">Run it from your watch</title>
+          <rect x="44" y="10" width="32" height="12" rx="4" fill="var(--line)"/>
+          <rect x="44" y="58" width="32" height="12" rx="4" fill="var(--line)"/>
+          <rect x="36" y="20" width="48" height="40" rx="12" fill="var(--paper)" stroke="var(--ink)" stroke-width="2"/>
+          <path d="M45 44l7-10 6 14 7-18 5 8h7" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div><strong data-i18n="aboutThreeTitle">Run it from your watch</strong><p data-i18n="aboutThreeBody">Sync a compatible Garmin device with Garmin Connect to download upcoming workouts. Follow the steps on your watch, then sync again to upload your completed activity.</p></div>
+      </li>
+      <li>
+        <svg class="setup-art" viewBox="0 0 120 80" role="img" aria-labelledby="about4-title">
+          <title id="about4-title" data-i18n="aboutFourTitle">Review it in the same chat</title>
+          <path d="M22 58V34M38 58V22M54 58V40M70 58V28" stroke="var(--green)" stroke-width="5" stroke-linecap="round"/>
+          <path d="M16 66h76" stroke="var(--line)" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="90" cy="26" r="13" fill="var(--mint)" stroke="var(--line)"/>
+          <path d="M84 26l4 4 8-9" fill="none" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div><strong data-i18n="aboutFourTitle">Review it in the same chat</strong><p data-i18n="aboutFourBody">With activity access enabled, ask your chat to retrieve your latest run: pace, distance, duration and heart rate where available. It can give feedback and propose changes to your next sessions, without exporting a file.</p></div>
+      </li>
+    </ol>
+    <p class="workflow-note" data-i18n="aboutAutomatic">After syncing, ask your chat to review your run. Workout Relay does not start chats or send automatic post-run feedback.</p>
+    <details class="disclosure"><summary data-i18n="aboutGoodToKnow">A few things to know</summary><p class="muted" data-i18n="aboutLimits">An assistant account with custom-connector access and a compatible Garmin device are required. This independent service is not affiliated with Garmin.</p></details>
+    <a class="text-link" data-about-link href="/about" data-i18n="aboutFullPage">Open the full guide</a>
+  </dialog>
 
   <dialog id="privacy-dialog">
     <div class="dialog-heading"><div><p class="step" data-i18n="privacy">Privacy</p><h2 data-i18n="privacyTitle">What is stored, and why</h2></div><button id="close-privacy" class="icon-button" type="button" aria-label="Close" data-i18n-aria="close">×</button></div>
@@ -369,7 +422,7 @@
     <p class="muted" data-i18n="privacyCookies">Cookies: one signed-in session cookie and one CSRF cookie, both strictly necessary, plus your language choice stored in this browser. No consent banner is needed for those, and nothing else is set.</p>
   </dialog>
 
-  <footer><span>Workout Relay</span><button id="open-privacy" class="text-link" type="button" data-i18n="privacy">Privacy</button><span data-i18n="disclaimer">Independent software. Not affiliated with Garmin.</span></footer>
+  <footer><span>Workout Relay</span><span class="footer-links"><button id="open-about" class="text-link" type="button" data-i18n="about">About</button><button id="open-privacy" class="text-link" type="button" data-i18n="privacy">Privacy</button></span><span data-i18n="disclaimer">Independent software. Not affiliated with Garmin.</span></footer>
   <script src="/static/app.js" defer></script>
 </body>
 </html>

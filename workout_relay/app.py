@@ -26,6 +26,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .config import Settings
+from .pages import LANGUAGE_COOKIE, about_html, language_links, page_language
 from .activities import ActivityError, ActivityService
 from .database import (
     ApiKey,
@@ -259,6 +260,7 @@ def create_app(
             "/api/v1/plans",
             "/api/v1/activities",
             "/mcp",
+            "/oauth/consent",
         )
         if request.url.path.startswith(private_prefixes):
             response.headers["Cache-Control"] = "no-store"
@@ -375,6 +377,20 @@ def create_app(
                 "Content-Security-Policy": "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",
             },
         )
+
+    @app.get("/about", include_in_schema=False)
+    async def about_page(request: Request):
+        language = page_language(request)
+        response = HTMLResponse(about_html(language), headers={"Cache-Control": "no-store"})
+        if request.query_params.get("lang") in ("en", "fr"):
+            response.set_cookie(LANGUAGE_COOKIE, language, max_age=31536000,
+                                secure=settings.cookie_secure, samesite="lax")
+        return response
+
+    @app.get("/static/runner.svg", include_in_schema=False)
+    async def runner_logo():
+        return Response((static / "runner.svg").read_text(), media_type="image/svg+xml",
+                        headers={"Cache-Control": "no-cache"})
 
     @app.get("/static/styles.css", include_in_schema=False)
     async def styles():
@@ -522,7 +538,7 @@ def create_app(
     @app.get("/oauth/consent", include_in_schema=False)
     async def consent_page(request: Request, session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
         grant = pending_grant(database, request.query_params.get("request", ""))
-        language = "fr" if "fr" in request.headers.get("accept-language", "").lower() else "en"
+        language = page_language(request)
         if grant is None:
             return HTMLResponse(consent_html(language, expired=True), status_code=400)
         actor_user = None
@@ -530,7 +546,7 @@ def create_app(
             with database.session() as db:
                 found = database.actor_from_session(db, session_token)
                 actor_user = found[0].email if found else None
-        return HTMLResponse(
+        response = HTMLResponse(
             consent_html(
                 language,
                 grant=grant,
@@ -538,12 +554,17 @@ def create_app(
                 csrf=request.cookies.get(CSRF_COOKIE, ""),
             )
         )
+        if request.query_params.get("lang") in ("en", "fr"):
+            response.set_cookie(LANGUAGE_COOKIE, language, max_age=31536000,
+                                secure=settings.cookie_secure, samesite="lax")
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.post("/oauth/consent", include_in_schema=False)
     async def consent_submit(request: Request):
         form = await request.form()
         grant_id = str(form.get("request", ""))
-        language = "fr" if "fr" in request.headers.get("accept-language", "").lower() else "en"
+        language = page_language(request, form.get("lang"))
         session_token = request.cookies.get(SESSION_COOKIE)
         grant = pending_grant(database, grant_id)
         if grant is None:
@@ -578,7 +599,7 @@ def create_app(
                 database.audit(db, "account.login", candidate.id, {"via": "consent"})
                 db.commit()
             # Re-enter the page with a session so consent is a deliberate second step.
-            response.headers["Location"] = f"{settings.base_url}/oauth/consent?request={grant_id}"
+            response.headers["Location"] = f"{settings.base_url}/oauth/consent?request={grant_id}&lang={language}"
             return response
         target = approve(database, grant_id, user.id)
         if target is None:
@@ -1240,6 +1261,10 @@ CONSENT_TEXT = {
 }
 
 CONSENT_STYLE = (
+    ".language-choices{display:flex;justify-content:flex-end;gap:6px;margin-bottom:24px;flex-wrap:wrap}"
+    ".language-choices a{padding:10px 12px;border:1px solid #dce2e8;border-radius:99px;color:#344454;text-decoration:none;font-size:14px}"
+    ".language-choices a[aria-current=true]{background:#eaf5fc;color:#005e96;border-color:#0076bb}"
+    "a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #0076bb;outline-offset:3px}"
     "body{margin:0;padding:24px 16px;background:#f4f6f8;color:#17212b;"
     "font:16px/1.5 ui-sans-serif,system-ui,sans-serif}"
     "main{max-width:420px;margin:0 auto;background:#ffffff;border:1px solid #dce2e8;"
@@ -1272,7 +1297,8 @@ def consent_html(
     expired: bool = False,
 ) -> str:
     """The consent screen, rendered server-side so it needs no script."""
-    text = CONSENT_TEXT.get(language, CONSENT_TEXT["en"])
+    language = language if language in ("en", "fr") else "en"
+    text = CONSENT_TEXT[language]
 
     def esc(value: str) -> str:
         return (
@@ -1288,6 +1314,7 @@ def consent_html(
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
         f"<title>{esc(text['title'])}</title><style>{CONSENT_STYLE}</style></head><body><main>"
     )
+    head += language_links("/oauth/consent", language, **({"request": grant["id"]} if grant else {}))
     if expired or grant is None:
         return head + f"<h1>{esc(text['title'])}</h1><p>{esc(text['expired'])}</p></main></body></html>"
 
@@ -1305,6 +1332,7 @@ def consent_html(
         body.append(f"<p class='error'>{esc(text.get(error, error))}</p>")
     body.append(f"<form method='post' action='/oauth/consent'>")
     body.append(f"<input type='hidden' name='request' value='{esc(grant['id'])}'>")
+    body.append(f"<input type='hidden' name='lang' value='{language}'>")
     if email:
         body.append(f"<p class='muted'>{esc(text['as'].format(email=email))}</p>")
         body.append(f"<input type='hidden' name='csrf' value='{esc(csrf)}'>")
@@ -1319,7 +1347,7 @@ def consent_html(
             "autocomplete='current-password' required></label>"
         )
         body.append(f"<button class='primary' name='action' value='login'>{esc(text['continue'])}</button>")
-    body.append(f"<button class='ghost' name='action' value='deny'>{esc(text['deny'])}</button>")
+    body.append(f"<button class='ghost' name='action' value='deny' formnovalidate>{esc(text['deny'])}</button>")
     body.append("</form>")
     return head + "".join(body) + "</main></body></html>"
 
