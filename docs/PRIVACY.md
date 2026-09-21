@@ -44,17 +44,34 @@ the choice, disconnect Garmin and connect again.
 | Plans you send, and their results | Showing history, avoiding duplicate uploads | `PLAN_RETENTION_DAYS`, then deleted automatically |
 | Encrypted Garmin session tokens | Sending plans without a fresh Garmin login | Until you disconnect — **only** under "Keep Garmin connected" |
 | Hashed API keys, assistant connections | Letting your tools act for you | Until revoked |
+| A hashed record of each signed-in browser session | Keeping you signed in | `SESSION_DAYS`, then deleted |
+| Your language choice | Showing the interface in French or English | With the account |
 | Audit events (what happened, never contents) | Security, and showing you what an assistant did | With the account |
 
-Activity data read through an assistant is fetched from Garmin on request and
-passed to that assistant. It is not stored here, and it requires a separate
-`activities:read` permission you grant explicitly.
+The exact periods in force are served at `/api/v1/policy` and shown in the
+privacy dialog, so what you read is the configuration rather than prose that
+could drift from it.
+
+### Activity data
+
+Reading completed activities requires a separate `activities:read` permission
+you grant explicitly when connecting an assistant.
+
+The measurements themselves — heart rate, pace, distance and the rest — are
+fetched from Garmin on request, passed to the assistant, and not stored here.
+
+What *is* stored: the **IDs** of the activities shown to an assistant, together
+with your Garmin account name and a timestamp, for 24 hours. That record is
+what confines an assistant to activities it was actually shown in your own
+listing, instead of letting it ask for arbitrary IDs. It holds no measurements.
+It is deleted when it ages out, when you disconnect Garmin, or with the account.
 
 ### Clearing plan history
 
 **Clear history** under Plans deletes your finished submissions — the plan
-contents and their results — at any time, without waiting for the retention
-period. Two things it deliberately does not touch: workouts already sent to
+contents and their results — at any time, without waiting for `PLAN_RETENTION_DAYS`
+to expire. Nothing in the service depends on that history: duplicate prevention
+uses the workout links described below, not the submissions. Two things it deliberately does not touch: workouts already sent to
 Garmin, which live in your Garmin account and are yours to delete there, and
 the small record of which workout id became which Garmin workout. That record
 holds no plan content, and removing it would make the next send create a second
@@ -98,6 +115,19 @@ des plans sans vous.
 
 Dans les deux cas, votre e-mail, votre mot de passe et vos codes MFA Garmin ne
 sont jamais conservés. Pour changer de choix, déconnectez puis reconnectez.
+
+### Données d'activité
+
+Les mesures (fréquence cardiaque, allure, distance) sont récupérées auprès de
+Garmin à la demande, transmises à l'assistant, et ne sont pas conservées ici.
+Sont en revanche conservés 24 heures : les identifiants des activités montrées
+à un assistant, le nom de votre compte Garmin et un horodatage. Ce registre
+limite l'assistant aux activités qui lui ont été présentées ; il ne contient
+aucune mesure.
+
+« Effacer l'historique » supprime à tout moment vos envois terminés, sans
+attendre la période de conservation. Les durées exactes sont indiquées dans la
+fenêtre de confidentialité.
 
 ### Vos droits
 

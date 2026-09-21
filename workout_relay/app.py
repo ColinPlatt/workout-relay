@@ -398,6 +398,20 @@ def create_app(
             readiness_db.execute(select(1))
         return {"status": "ready"}
 
+    @app.get("/api/v1/policy", tags=["system"])
+    async def policy():
+        """The retention periods the privacy notice quotes.
+
+        Served unauthenticated so the notice can state real numbers rather
+        than prose, and so they cannot drift from the configuration.
+        """
+        return {
+            "plan_retention_days": settings.plan_retention_days,
+            "session_days": settings.session_days,
+            "garmin_visit_minutes": settings.garmin_visit_minutes,
+            "activity_id_retention_hours": 24,
+        }
+
     @app.get("/api/v1/plan-schema", tags=["plan format"])
     async def schema_endpoint():
         return plan_schema()

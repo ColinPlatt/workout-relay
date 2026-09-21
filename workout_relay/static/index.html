@@ -346,9 +346,11 @@
     <h3 data-i18n="privacyKeptTitle">Kept</h3>
     <ul class="checklist">
       <li data-i18n="privacyKeptAccount">Your account email and a password hash, so you can sign in.</li>
-      <li data-i18n="privacyKeptPlans">Plans you send and their results, deleted automatically after the retention period.</li>
+      <li data-i18n="privacyKeptPlans">Plans you send and their results, deleted automatically after the retention period. Clear history under Plans removes them sooner.</li>
       <li data-i18n="privacyKeptGarmin">Encrypted Garmin session tokens — only if you chose "Keep Garmin connected".</li>
       <li data-i18n="privacyKeptAssistants">Which assistants you connected, and when they last acted.</li>
+      <li data-i18n="privacyKeptActivityIds">If you granted activity access: the IDs of activities shown to an assistant, with your Garmin account name, kept briefly so it can only fetch what it was shown. The measurements themselves are passed straight through and never stored.</li>
+      <li data-i18n="privacyKeptSessions">A hashed record of each signed-in browser session, and your language choice.</li>
     </ul>
     <h3 data-i18n="privacyNeverTitle">Never kept</h3>
     <ul class="checklist">
@@ -362,6 +364,7 @@
       <li data-i18n="privacyControlAssistants">Disconnect an assistant under Assistants; it loses access immediately.</li>
       <li data-i18n="privacyControlDelete">Delete your account under Account, which removes everything above.</li>
     </ul>
+    <p id="privacy-periods" class="muted"></p>
     <p class="muted" data-i18n="privacyCookies">Cookies: one signed-in session cookie and one CSRF cookie, both strictly necessary, plus your language choice stored in this browser. No consent banner is needed for those, and nothing else is set.</p>
   </dialog>
 

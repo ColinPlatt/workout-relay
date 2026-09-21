@@ -154,3 +154,38 @@ async def test_clearing_history_is_per_account_and_needs_the_browser(onboarding_
         with app.state.database.session() as db:
             # The first account's history is untouched by the second's clear.
             assert len(db.scalars(select(PlanSubmission)).all()) == 1
+
+
+@pytest.mark.anyio
+async def test_the_notice_quotes_the_configured_periods(onboarding_settings):
+    """Stated retention must come from configuration, not from prose."""
+    settings = replace(onboarding_settings, plan_retention_days=42, session_days=7)
+    app = create_app(settings)
+    async with app.router.lifespan_context(app):
+        async with await client_for(app) as client:
+            policy = (await client.get("/api/v1/policy")).json()
+            assert policy["plan_retention_days"] == 42
+            assert policy["session_days"] == 7
+            assert policy["garmin_visit_minutes"] == settings.garmin_visit_minutes
+            assert policy["activity_id_retention_hours"] == 24
+
+            script = (await client.get("/static/app.js")).text
+            assert "privacyPeriods" in script
+            assert "plan_retention_days" in script
+
+
+@pytest.mark.anyio
+async def test_the_notice_admits_that_activity_ids_are_stored(onboarding_settings):
+    """The measurements pass through, but the IDs are kept: say both."""
+    app = create_app(onboarding_settings)
+    async with app.router.lifespan_context(app):
+        async with await client_for(app) as client:
+            page = (await client.get("/")).text
+            script = (await client.get("/static/app.js")).text
+            assert 'data-i18n="privacyKeptActivityIds"' in page
+            assert 'data-i18n="privacyKeptSessions"' in page
+            assert script.count("privacyKeptActivityIds") == 2
+
+    notice = __import__("pathlib").Path("docs/PRIVACY.md").read_text()
+    assert "not stored here, and it requires" not in notice  # the old, false claim
+    assert "the **IDs** of the activities shown to an assistant" in notice

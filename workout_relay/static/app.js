@@ -69,9 +69,12 @@ const translations = {
     privacyNoteText: "Workout Relay stores only what it needs to work: your account email, a password hash, and the plans you send. Cookies here are strictly necessary for signing in, so there is nothing to opt into. You choose where your Garmin session is kept when you connect it.",
     privacyKeptTitle: "Kept", privacyNeverTitle: "Never kept", privacyControlTitle: "Your controls",
     privacyKeptAccount: "Your account email and a password hash, so you can sign in.",
-    privacyKeptPlans: "Plans you send and their results, deleted automatically after the retention period.",
+    privacyKeptPlans: "Plans you send and their results, deleted automatically after the retention period. Clear history under Plans removes them sooner.",
     privacyKeptGarmin: "Encrypted Garmin session tokens — only if you chose “Keep Garmin connected”.",
     privacyKeptAssistants: "Which assistants you connected, and when they last acted.",
+    privacyKeptActivityIds: "If you granted activity access: the IDs of activities shown to an assistant, with your Garmin account name, kept briefly so it can only fetch what it was shown. The measurements themselves are passed straight through and never stored.",
+    privacyKeptSessions: "A hashed record of each signed-in browser session, and your language choice.",
+    privacyPeriods: "Periods in force here: plans are deleted after {plans} days, a signed-in session lasts {session} days, a visit-only Garmin session expires after {visit} minutes, and activity IDs are kept for {activities} hours.",
     privacyNeverPassword: "Your Garmin email and password, or MFA codes.",
     privacyNeverPlain: "Garmin tokens in readable form, or in the database at all under “This visit only”.",
     privacyNeverTracking: "Analytics, advertising or third-party tracking of any kind.",
@@ -210,9 +213,12 @@ const translations = {
     privacyNoteText: "Workout Relay ne conserve que le nécessaire : l'e-mail du compte, une empreinte du mot de passe et les plans envoyés. Les cookies utilisés sont strictement nécessaires à la connexion : il n'y a rien à accepter. Vous choisissez où votre session Garmin est conservée au moment de la connecter.",
     privacyKeptTitle: "Conservé", privacyNeverTitle: "Jamais conservé", privacyControlTitle: "Vos contrôles",
     privacyKeptAccount: "L'e-mail du compte et une empreinte du mot de passe, pour vous connecter.",
-    privacyKeptPlans: "Les plans envoyés et leurs résultats, supprimés automatiquement après la période de conservation.",
+    privacyKeptPlans: "Les plans envoyés et leurs résultats, supprimés automatiquement après la période de conservation. « Effacer l'historique » les supprime plus tôt.",
     privacyKeptGarmin: "Les jetons de session Garmin chiffrés — uniquement si vous avez choisi « Rester connecté à Garmin ».",
     privacyKeptAssistants: "Les assistants connectés et la date de leur dernière action.",
+    privacyKeptActivityIds: "Si vous avez autorisé l'accès aux activités : les identifiants des activités montrées à un assistant, avec le nom de votre compte Garmin, conservés brièvement afin qu'il ne puisse récupérer que ce qui lui a été montré. Les mesures elles-mêmes transitent sans être conservées.",
+    privacyKeptSessions: "Une empreinte de chaque session de navigateur connectée, et votre choix de langue.",
+    privacyPeriods: "Durées appliquées ici : les plans sont supprimés après {plans} jours, une session connectée dure {session} jours, une session Garmin « cette visite uniquement » expire après {visit} minutes, et les identifiants d'activités sont conservés {activities} heures.",
     privacyNeverPassword: "Votre e-mail et mot de passe Garmin, ni les codes MFA.",
     privacyNeverPlain: "Les jetons Garmin en clair, ni en base sous « Cette visite uniquement ».",
     privacyNeverTracking: "Aucune analyse d'audience, publicité ou traceur tiers.",
@@ -516,7 +522,7 @@ $("#logout").addEventListener("click", async () => { await api("/api/v1/auth/log
 
 $("#garmin-card").addEventListener("click", openGarminDialog);
 $("#setup-connect").addEventListener("click", openGarminDialog);
-$("#setup-privacy").addEventListener("click", () => $("#privacy-dialog").showModal());
+$("#setup-privacy").addEventListener("click", () => { showRetentionPeriods(); $("#privacy-dialog").showModal(); });
 $("#close-garmin").addEventListener("click", () => $("#garmin-dialog").close());
 $("#garmin-login-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.currentTarget.querySelector("button[type=submit]"); setBusy(button, true); $("#garmin-login-error").textContent = "";
@@ -653,13 +659,25 @@ $("#delete-account-form").addEventListener("submit", async (event) => {
   finally { setBusy(button, false); }
 });
 
-$("#open-privacy").addEventListener("click", () => $("#privacy-dialog").showModal());
+$("#open-privacy").addEventListener("click", () => { showRetentionPeriods(); $("#privacy-dialog").showModal(); });
 $("#close-privacy").addEventListener("click", () => $("#privacy-dialog").close());
-$("#privacy-note-more").addEventListener("click", () => $("#privacy-dialog").showModal());
+$("#privacy-note-more").addEventListener("click", () => { showRetentionPeriods(); $("#privacy-dialog").showModal(); });
 $("#privacy-note-ok").addEventListener("click", () => {
   $("#privacy-note").classList.add("hidden");
   try { localStorage.setItem("workoutRelayPrivacyNote", "seen"); } catch (_) { /* private browsing */ }
 });
+
+async function showRetentionPeriods() {
+  try {
+    const policy = await api("/api/v1/policy");
+    $("#privacy-periods").textContent = t("privacyPeriods", {
+      plans: policy.plan_retention_days,
+      session: policy.session_days,
+      visit: policy.garmin_visit_minutes,
+      activities: policy.activity_id_retention_hours,
+    });
+  } catch (_) { $("#privacy-periods").textContent = ""; }
+}
 
 function showPrivacyNote() {
   let seen = false;
