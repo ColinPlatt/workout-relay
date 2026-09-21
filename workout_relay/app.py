@@ -374,6 +374,19 @@ def create_app(
                 )
             )
 
+    @app.post("/", include_in_schema=False)
+    async def connector_at_the_root(request: Request):
+        """Send a connector that was given the bare domain to the right place.
+
+        People paste the site address rather than the connector address, and
+        the client then posts JSON-RPC here and reports that the server
+        returned an error. 307 preserves the method and body, so the call
+        simply lands on /mcp/. Anything that is not JSON-RPC is refused.
+        """
+        if connector is None or "json" not in request.headers.get("content-type", ""):
+            raise api_error(405, "method_not_allowed")
+        return Response(status_code=307, headers={"Location": "/mcp/"})
+
     @app.get("/", include_in_schema=False)
     async def index():
         return HTMLResponse(

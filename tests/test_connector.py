@@ -526,3 +526,34 @@ async def test_health_data_is_never_granted_by_default(connector_settings):
             code = parse_qs(urlsplit(approved.headers["location"]).query)["code"][0]
             tokens = await exchange(client, registration, code, verifier)
             assert "activities:read" not in tokens.json()["scope"]
+
+
+@pytest.mark.anyio
+async def test_the_bare_domain_forwards_to_the_connector(connector_settings):
+    """Given the site address instead of the connector address, a client
+    posted JSON-RPC to the root and got 405, which it reported as the server
+    failing to connect. Forward it instead."""
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            forwarded = await client.post(
+                "/",
+                headers={"Content-Type": "application/json"},
+                json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            )
+            assert forwarded.status_code == 307
+            assert forwarded.headers["location"] == "/mcp/"
+
+            # Following it reaches the connector, which then asks for a token.
+            followed = await client.post(
+                "/",
+                headers={"Content-Type": "application/json",
+                         "Accept": "application/json, text/event-stream"},
+                json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+                follow_redirects=True,
+            )
+            assert followed.status_code == 401
+
+            # The page itself is unaffected, and a non-JSON post is still refused.
+            assert (await client.get("/")).status_code == 200
+            assert (await client.post("/", content="hello")).status_code == 405
