@@ -17,7 +17,11 @@ from typing import Any, Callable, Protocol
 from uuid import uuid4
 
 from garminconnect import Garmin
-from garminconnect.exceptions import GarminConnectAuthenticationError, GarminConnectConnectionError
+from garminconnect.exceptions import (
+    GarminConnectAuthenticationError,
+    GarminConnectConnectionError,
+    GarminConnectTooManyRequestsError,
+)
 
 
 class GarminError(RuntimeError):
@@ -90,7 +94,7 @@ class LiveGarminGateway:
             status, _ = client.login()
         except Exception as exc:
             self._clear_credentials(client)
-            raise GarminError("garmin_login_failed", _safe_detail(exc)) from exc
+            raise _login_error(exc) from exc
 
         self._clear_credentials(client)
         if status == "needs_mfa":
@@ -458,7 +462,11 @@ class MockGarminGateway:
 
     def start_login(self, user_id: str, email: str, password: str) -> Connected | MfaRequired:
         if password == "reject-login":
-            raise GarminError("garmin_login_failed")
+            raise GarminError("garmin_credentials_rejected")
+        if password == "rate-limit-login":
+            raise GarminError("garmin_rate_limited")
+        if password == "slow-login":
+            time.sleep(30)
         if email.lower().startswith("mfa+"):
             attempt = f"mock_{uuid4().hex}"
             self._attempts[attempt] = user_id
@@ -520,6 +528,23 @@ class MockGarminSession:
 
     def cleanup_marker(self, workout: Any, workout_id: str, *, progress: dict, checkpoint: Callable) -> None:
         checkpoint(dict(progress, cleanup=None), self._token_bundle)
+
+
+def _login_error(exc: Exception) -> GarminError:
+    """Say which kind of failure this was, because the answers differ.
+
+    The client tries five sign-in strategies in turn and gives up on the first
+    that reports invalid credentials. When Cloudflare blocks a strategy
+    instead, it reports a connection failure and the chain continues, so
+    "rejected" and "we could not ask" must not look the same to the person.
+    """
+    if isinstance(exc, GarminConnectAuthenticationError):
+        return GarminError("garmin_credentials_rejected", _safe_detail(exc))
+    if isinstance(exc, GarminConnectTooManyRequestsError):
+        return GarminError("garmin_rate_limited", _safe_detail(exc))
+    if "exhausted" in str(exc).lower():
+        return GarminError("garmin_login_unavailable", _safe_detail(exc))
+    return GarminError("garmin_login_failed", _safe_detail(exc))
 
 
 def _publish_error(exc: Exception) -> GarminError:

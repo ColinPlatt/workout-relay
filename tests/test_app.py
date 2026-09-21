@@ -341,3 +341,66 @@ async def test_worker_survives_failures(settings, monkeypatch):
             second = await client.post("/api/v1/plans", headers=mutation, json=EXAMPLE_PLAN)
             second_result = await wait_for_submission(client, second.json()["id"])
             assert second_result["status"] == "completed"
+
+
+@pytest.mark.anyio
+async def test_garmin_sign_in_failures_are_distinguished(settings):
+    """A rejected password and a blocked server need different answers."""
+    app = create_app(settings)
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            csrf = await register(client)
+            mutation = {"X-CSRF-Token": csrf}
+
+            rejected = await client.post(
+                "/api/v1/garmin/connect/start",
+                headers=mutation,
+                json={"email": "garmin@example.com", "password": "reject-login",
+                      "retention": "persistent"},
+            )
+            assert rejected.status_code == 400
+            assert rejected.json()["detail"]["code"] == "garmin_credentials_rejected"
+
+            limited = await client.post(
+                "/api/v1/garmin/connect/start",
+                headers=mutation,
+                json={"email": "garmin@example.com", "password": "rate-limit-login",
+                      "retention": "persistent"},
+            )
+            assert limited.json()["detail"]["code"] == "garmin_rate_limited"
+
+            # Nothing was connected by either failure.
+            assert (await client.get("/api/v1/garmin/status")).json()["connected"] is False
+
+
+@pytest.mark.anyio
+async def test_garmin_sign_in_gives_up_rather_than_hanging(settings, monkeypatch):
+    import workout_relay.app as app_module
+
+    monkeypatch.setattr(app_module, "GARMIN_LOGIN_TIMEOUT_SECONDS", 0.05)
+    app = create_app(settings)
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            csrf = await register(client)
+            response = await client.post(
+                "/api/v1/garmin/connect/start",
+                headers={"X-CSRF-Token": csrf},
+                json={"email": "garmin@example.com", "password": "slow-login",
+                      "retention": "persistent"},
+            )
+            assert response.status_code == 504
+            assert response.json()["detail"]["code"] == "garmin_login_timeout"
+
+
+def test_the_interface_explains_the_wait_and_each_failure():
+    from pathlib import Path
+
+    script = Path("workout_relay/static/app.js").read_text()
+    for key in ("error_garmin_credentials_rejected", "error_garmin_rate_limited",
+                "error_garmin_login_unavailable", "error_garmin_login_timeout"):
+        assert script.count(key) == 2, key  # one per language
+    assert script.count("garminSlow") == 3  # both languages, plus its use
+    # The explanation appears while waiting, not only after failing.
+    assert 'setTimeout(() => { notice.textContent = t("garminSlow"); }, 4000)' in script

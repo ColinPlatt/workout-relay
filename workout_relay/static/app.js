@@ -142,6 +142,12 @@ const translations = {
     error_browser_session_required: "This security action must be completed in the website.",
     error_invalid_current_password: "The current password is incorrect.",
     error_rate_limited: "Too many attempts. Wait before trying again.", error_garmin_login_failed: "Garmin rejected the login. Check the credentials or try again later.",
+    error_garmin_credentials_rejected: "Garmin did not accept that email and password. If you normally sign in to Garmin with Apple or Google, set a Garmin password first.",
+    error_garmin_rate_limited: "Garmin is rate-limiting sign-ins from this server. Wait a few minutes and try again.",
+    error_garmin_login_unavailable: "Garmin would not let us reach the sign-in page, which usually means its bot protection blocked this server rather than that your password is wrong. Try again in a few minutes.",
+    error_garmin_login_timeout: "Garmin did not answer in time. Nothing was changed; try again in a few minutes.",
+    garminSlow: "Signing in to Garmin can take up to a minute: Garmin makes us pause between steps to prove we are not a bot. Keep this page open.",
+    garminWorking: "Signing in to Garmin…",
     error_garmin_mfa_failed: "The Garmin verification code was rejected. Start the connection again.",
     error_garmin_attempt_expired: "The Garmin login attempt expired. Start again.",
     error_garmin_not_connected: "Connect Garmin before sending a plan.", error_garmin_reauthentication_required: "Garmin requires you to reconnect.",
@@ -303,6 +309,12 @@ const translations = {
     error_browser_session_required: "Cette action de sécurité doit être effectuée sur le site web.",
     error_invalid_current_password: "Le mot de passe actuel est incorrect.",
     error_rate_limited: "Trop de tentatives. Patientez avant de réessayer.", error_garmin_login_failed: "Garmin a refusé la connexion. Vérifiez les identifiants ou réessayez plus tard.",
+    error_garmin_credentials_rejected: "Garmin n'a pas accepté cet e-mail et ce mot de passe. Si vous vous connectez habituellement à Garmin avec Apple ou Google, définissez d'abord un mot de passe Garmin.",
+    error_garmin_rate_limited: "Garmin limite les connexions depuis ce serveur. Patientez quelques minutes avant de réessayer.",
+    error_garmin_login_unavailable: "Garmin ne nous a pas laissé atteindre la page de connexion : sa protection anti-robots a probablement bloqué ce serveur, plutôt qu'un mot de passe incorrect. Réessayez dans quelques minutes.",
+    error_garmin_login_timeout: "Garmin n'a pas répondu à temps. Rien n'a été modifié ; réessayez dans quelques minutes.",
+    garminSlow: "La connexion à Garmin peut prendre jusqu'à une minute : Garmin impose des pauses entre les étapes pour vérifier que nous ne sommes pas un robot. Gardez cette page ouverte.",
+    garminWorking: "Connexion à Garmin en cours…",
     error_garmin_mfa_failed: "Le code de vérification Garmin a été refusé. Recommencez la connexion.",
     error_garmin_attempt_expired: "La tentative de connexion Garmin a expiré. Recommencez.",
     error_garmin_not_connected: "Connectez Garmin avant d'envoyer un plan.", error_garmin_reauthentication_required: "Garmin demande une nouvelle connexion.",
@@ -602,7 +614,12 @@ $("#setup-connect").addEventListener("click", openGarminDialog);
 $("#setup-privacy").addEventListener("click", () => { showRetentionPeriods(); $("#privacy-dialog").showModal(); });
 $("#close-garmin").addEventListener("click", () => $("#garmin-dialog").close());
 $("#garmin-login-form").addEventListener("submit", async (event) => {
-  event.preventDefault(); const button = event.currentTarget.querySelector("button[type=submit]"); setBusy(button, true); $("#garmin-login-error").textContent = "";
+  event.preventDefault(); const button = event.currentTarget.querySelector("button[type=submit]"); setBusy(button, true);
+  const notice = $("#garmin-login-error");
+  notice.textContent = t("garminWorking");
+  notice.classList.remove("error");
+  // Garmin's anti-bot pauses make this slow; explain rather than spin silently.
+  const explain = window.setTimeout(() => { notice.textContent = t("garminSlow"); }, 4000);
   try {
     const retention = ($$('input[name="retention"]').find((option) => option.checked) || {}).value || "persistent";
     state.retention = retention;
@@ -611,8 +628,12 @@ $("#garmin-login-form").addEventListener("submit", async (event) => {
     if (result.status === "mfa_required") {
       state.mfaAttempt = result.attempt_id; $("#garmin-login-form").classList.add("hidden"); $("#garmin-mfa-form").classList.remove("hidden"); showToast(t("mfaRequired"));
     } else { showToast(t("connected")); $("#garmin-dialog").close(); await loadGarmin(); }
-  } catch (error) { $("#garmin-password").value = ""; $("#garmin-login-error").textContent = errorText(error); }
-  finally { setBusy(button, false); }
+  } catch (error) {
+    $("#garmin-password").value = "";
+    notice.classList.add("error");
+    notice.textContent = errorText(error);
+  }
+  finally { window.clearTimeout(explain); setBusy(button, false); if (!notice.classList.contains("error")) notice.textContent = ""; }
 });
 $("#garmin-mfa-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const button = event.currentTarget.querySelector("button[type=submit]"); setBusy(button, true); $("#garmin-mfa-error").textContent = "";

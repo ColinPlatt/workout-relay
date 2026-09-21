@@ -1,5 +1,9 @@
 # Deployment
 
+For the application-host migration with the existing database and encryption
+key preserved, follow [Render → Northflank](NORTHFLANK.md). Preparation does not
+mean the new service is deployed; leave Render intact until cutover checks pass.
+
 ## Development or private demonstration
 
 Use `docker compose up --build`. It runs in `GARMIN_MODE=mock` and stores SQLite
@@ -10,8 +14,9 @@ data on a named volume. No Garmin requests are made.
 1. Use managed Postgres and a single web process for the initial release.
 2. Set `APP_ENV=production`, `GARMIN_MODE=live`, an HTTPS `BASE_URL`, and
    `COOKIE_SECURE=true`.
-3. Generate a Fernet `MASTER_ENCRYPTION_KEY` and store it only in the hosting
-   platform's secret manager.
+3. For a new installation, generate a Fernet `MASTER_ENCRYPTION_KEY` and store
+   it only in the hosting platform's secret manager. For a migration, preserve
+   the existing key exactly; do not generate another one.
 4. Disable request-body capture for Garmin connection routes at every layer.
 5. Put a shared rate limiter in front of login and Garmin connection routes.
 6. Encrypt database backups and test account/token deletion and restore policy.
@@ -90,6 +95,27 @@ container.
 
 The Docker image remains portable and accepts any PostgreSQL SQLAlchemy URL;
 the prepared configuration below is the supported first deployment path.
+
+## Garmin sign-in is slow by design
+
+The pinned client tries five sign-in strategies in turn and sleeps between
+fetching each form and posting credentials: 3-8 seconds on the widget path and
+10-20 on each portal path. A wrong password normally stops the chain at the
+first strategy, because the mobile endpoint reports invalid credentials
+explicitly. When Cloudflare blocks that strategy instead it reports a
+connection failure, the chain continues, and the person waits through the
+remaining delays before anything is reported.
+
+So the codes differ: `garmin_credentials_rejected` means Garmin said no,
+`garmin_rate_limited` means 429, `garmin_login_unavailable` means every
+strategy was exhausted without a verdict — usually bot protection against the
+server's address rather than a bad password — and `garmin_login_timeout` means
+the request gave up after `GARMIN_LOGIN_TIMEOUT_SECONDS` (75). The worker
+thread continues after a timeout; whatever it completes is discarded, and any
+MFA attempt it registers expires on its own.
+
+Blocked sign-ins are a property of the hosting address. If they persist,
+running from a residential connection is the fix, not a configuration change.
 
 ## Assistant connector
 

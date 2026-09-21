@@ -316,7 +316,7 @@
       </fieldset>
       <label class="consent"><input id="garmin-consent" type="checkbox" required><span data-i18n="garminConsent">I understand this is unofficial, and that the choice above decides where my Garmin session is kept.</span></label>
       <button class="button primary wide" type="submit" data-i18n="connectSecurely">Connect securely</button>
-      <p id="garmin-login-error" class="form-message error" role="alert"></p>
+      <p id="garmin-login-error" class="form-message" role="status" aria-live="polite"></p>
     </form>
     <form id="garmin-mfa-form" class="hidden">
       <p data-i18n="mfaHelp">Enter the verification code Garmin sent you. This attempt expires after five minutes.</p>

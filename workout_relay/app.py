@@ -56,6 +56,12 @@ logger = logging.getLogger(__name__)
 # and rely on the journal past the deadline.
 SHUTDOWN_DRAIN_SECONDS = 25
 
+# The Garmin client sleeps 3-20s between fetching a sign-in form and posting
+# credentials, on each of five strategies it may try, so a legitimate sign-in
+# can genuinely take most of a minute. Past this the request answers rather
+# than leaving the person watching a spinner.
+GARMIN_LOGIN_TIMEOUT_SECONDS = 75
+
 SESSION_COOKIE = "workout_relay_session"
 CSRF_COOKIE = "workout_relay_csrf"
 
@@ -700,9 +706,21 @@ def create_app(
             raise api_error(429, "rate_limited")
         password = body.password.get_secret_value()
         try:
-            result = await asyncio.to_thread(
-                gateway.start_login, current.user.id, str(body.email), password
+            result = await asyncio.wait_for(
+                asyncio.to_thread(
+                    gateway.start_login, current.user.id, str(body.email), password
+                ),
+                timeout=GARMIN_LOGIN_TIMEOUT_SECONDS,
             )
+        except asyncio.TimeoutError:
+            # The thread keeps running; any session it completes is simply
+            # discarded, and the attempt it may register expires by itself.
+            logger.warning("garmin sign-in exceeded %ss", GARMIN_LOGIN_TIMEOUT_SECONDS)
+            database.audit(
+                db, "garmin.login_failed", current.user.id, {"code": "garmin_login_timeout"}
+            )
+            db.commit()
+            raise api_error(504, "garmin_login_timeout")
         except GarminError as exc:
             database.audit(db, "garmin.login_failed", current.user.id, {"code": exc.code})
             db.commit()
