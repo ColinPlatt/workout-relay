@@ -133,7 +133,7 @@ async def test_probe_is_absent_unless_enabled(settings):
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.post("/mcp/", json=INITIALIZE, headers=MCP_HEADERS)
+            response = await client.post("/mcp-probe/", json=INITIALIZE, headers=MCP_HEADERS)
             assert response.status_code == 404
 
 
@@ -143,7 +143,7 @@ async def test_mounted_probe_completes_a_handshake(probe_settings):
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.post("/mcp/", json=INITIALIZE, headers=MCP_HEADERS)
+            response = await client.post("/mcp-probe/", json=INITIALIZE, headers=MCP_HEADERS)
             assert response.status_code == 200, response.text
             body = response.json()
             assert body["result"]["serverInfo"]["name"].startswith("Workout Relay")
@@ -155,10 +155,10 @@ async def test_shared_secret_is_enforced_when_configured(probe_settings):
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            denied = await client.post("/mcp/", json=INITIALIZE, headers=MCP_HEADERS)
+            denied = await client.post("/mcp-probe/", json=INITIALIZE, headers=MCP_HEADERS)
             assert denied.status_code == 401
             allowed = await client.post(
-                "/mcp/",
+                "/mcp-probe/",
                 json=INITIALIZE,
                 headers=MCP_HEADERS | {"Authorization": "Bearer probe-secret"},
             )

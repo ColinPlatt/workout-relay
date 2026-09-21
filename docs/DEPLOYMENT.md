@@ -91,6 +91,27 @@ container.
 The Docker image remains portable and accepts any PostgreSQL SQLAlchemy URL;
 the prepared configuration below is the supported first deployment path.
 
+## Assistant connector
+
+`CONNECTOR_ENABLED` (default on) mounts an MCP server at `/mcp/` and an OAuth
+authorization server at the site root: `/authorize`, `/token`, `/register`,
+`/revoke`, plus `/.well-known/oauth-authorization-server` and
+`/.well-known/oauth-protected-resource/mcp/`. Discovery documents must stay at
+the root, because a client reads them before it ever reaches `/mcp/`.
+
+OAuth requires an HTTPS issuer, localhost excepted, so a development `BASE_URL`
+disables the connector with a warning rather than failing startup.
+
+Clients register themselves (RFC 7591) and every flow uses PKCE. An authorize
+request only parks a pending grant: the code is created when someone signs in
+on the consent page and approves, so an authorize call alone can never produce
+a usable code. Access and refresh tokens are stored as SHA-256 hashes, refresh
+rotates on use, and the token family means revoking a connection stops every
+token it ever issued. Nothing here reaches Garmin credentials or tokens.
+
+Tool schema changes do not propagate to already-connected clients. After
+changing a tool, expect people to reconnect the connector to see it.
+
 ## Prepared Render deployment (free)
 
 `render.yaml` defines a single free Docker web process in Frankfurt. Render

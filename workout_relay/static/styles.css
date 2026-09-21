@@ -119,6 +119,8 @@ pre { overflow-x: auto; margin: 15px 0; padding: 15px; color: #dcebe5; backgroun
 .key-row small { display: block; color: var(--muted); }
 .key-row button { border: 0; color: var(--danger); background: transparent; cursor: pointer; }
 .workflow { padding-left: 22px; }
+.connector-heading { margin-top: 22px; font-size: 15px; }
+#connector-url { font-family: ui-monospace, monospace; font-size: 13px; }
 .workflow li { margin-bottom: 9px; }
 .text-link { color: var(--green); font-weight: 800; }
 .danger-zone { border-color: #e4b6b0; }

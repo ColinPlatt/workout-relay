@@ -24,8 +24,21 @@ const translations = {
     ruleUnique: "IDs identify a workout across your whole account, not just within one plan.", ruleTitle: "Garmin workout titles contain at most 50 characters.",
     ruleValidate: "Call the validation endpoint before submitting an automatically generated plan.",
     ruleNoMarkdown: "Send raw JSON—not Markdown code fences or explanatory text.", assistantAccess: "Assistant access",
-    assistantHelp: "Create a revocable bearer key for ChatGPT, Claude, or your own automation. Add it only to the assistant's protected API-auth settings—never an ordinary chat. The full key is displayed once.",
+    assistantHelp: "For a custom GPT or your own scripts, create a revocable bearer key. Add it only to the tool's protected API-authentication field—never paste it into a chat. The full key is shown once. Claude cannot use a bearer key: connect it with the connector above.",
     keyNamePlaceholder: "My training assistant", createKey: "Create key", apiWorkflow: "Recommended API workflow",
+    connectAssistant: "Connect an assistant", connectorAddress: "Connector address", copyAddress: "Copy address",
+    connectAssistantHelp: "Add this address as a connector in Claude or ChatGPT. You sign in here once and approve; the assistant never sees your Garmin or Workout Relay password.",
+    inClaude: "In Claude", inChatgpt: "In ChatGPT",
+    claudeStep1: "Open Settings, then Connectors, and choose Add custom connector.",
+    claudeStep2: "Paste the address above and add it. Leave the advanced OAuth fields empty.",
+    claudeStep3: "Adding a connector may need a browser rather than the phone app; once added it works in any chat.",
+    chatgptStep1: "Paid plans: open Settings, then Security and login, and turn on Developer mode. Connectors then accept a custom server address.",
+    chatgptStep2: "Add the address above as a custom connector and approve the sign-in.",
+    chatgptStep3: "Free plans do not offer custom connectors. Use the Upload tab on this site, which needs no connector.",
+    connectApprove: "Either way you will be asked to sign in to Workout Relay and approve the connection. Then ask the assistant to build a plan and send it.",
+    connectedAssistants: "Connected assistants", noConnections: "No assistants connected yet.",
+    disconnect: "Disconnect", connectionRevoked: "Assistant disconnected.", lastUsed: "Last used {when}", neverUsed: "Not used yet",
+    confirmDisconnectAssistant: "Disconnect this assistant? It will no longer be able to send plans to your Garmin.",
     apiStep1: "Fetch the format instructions and JSON Schema.", apiStep2: "Generate a plan as raw JSON.",
     apiStep3: "POST it to /api/v1/plans/validate.", apiStep4: "Fix every structured validation error.",
     apiStep5: "POST the valid plan to /api/v1/plans.", openApiDocs: "Open interactive API documentation ↗",
@@ -104,8 +117,21 @@ const translations = {
     ruleUnique: "Les identifiants désignent une séance dans tout votre compte, pas seulement dans un plan.", ruleTitle: "Les titres de séance Garmin contiennent au maximum 50 caractères.",
     ruleValidate: "Appelez l'endpoint de validation avant de soumettre un plan généré automatiquement.",
     ruleNoMarkdown: "Envoyez du JSON brut, sans bloc de code Markdown ni texte explicatif.", assistantAccess: "Accès pour assistant",
-    assistantHelp: "Créez une clé révocable pour ChatGPT, Claude ou votre automatisation. Ajoutez-la uniquement aux réglages d'authentification API protégés de l'assistant, jamais dans une conversation. La clé complète n'est affichée qu'une fois.",
+    assistantHelp: "Pour un GPT personnalisé ou vos propres scripts, créez une clé révocable. Ajoutez-la uniquement au champ d'authentification API protégé de l'outil, jamais dans une conversation. La clé complète n'est affichée qu'une fois. Claude ne peut pas utiliser de clé : connectez-le avec le connecteur ci-dessus.",
     keyNamePlaceholder: "Mon assistant d'entraînement", createKey: "Créer une clé", apiWorkflow: "Flux API recommandé",
+    connectAssistant: "Connecter un assistant", connectorAddress: "Adresse du connecteur", copyAddress: "Copier l'adresse",
+    connectAssistantHelp: "Ajoutez cette adresse comme connecteur dans Claude ou ChatGPT. Vous vous connectez ici une fois et vous approuvez ; l'assistant ne voit jamais vos mots de passe Garmin ou Workout Relay.",
+    inClaude: "Dans Claude", inChatgpt: "Dans ChatGPT",
+    claudeStep1: "Ouvrez Réglages, puis Connecteurs, et choisissez Ajouter un connecteur personnalisé.",
+    claudeStep2: "Collez l'adresse ci-dessus et ajoutez-la. Laissez vides les champs OAuth avancés.",
+    claudeStep3: "L'ajout peut nécessiter un navigateur plutôt que l'application mobile ; une fois ajouté, il fonctionne dans toutes les conversations.",
+    chatgptStep1: "Offres payantes : ouvrez Réglages, puis Sécurité et connexion, et activez le mode développeur. Les connecteurs acceptent alors une adresse personnalisée.",
+    chatgptStep2: "Ajoutez l'adresse ci-dessus comme connecteur personnalisé et approuvez la connexion.",
+    chatgptStep3: "Les offres gratuites ne proposent pas de connecteurs personnalisés. Utilisez l'onglet Importer de ce site, qui n'en demande aucun.",
+    connectApprove: "Dans les deux cas, il vous sera demandé de vous connecter à Workout Relay et d'approuver. Demandez ensuite à l'assistant de créer un plan et de l'envoyer.",
+    connectedAssistants: "Assistants connectés", noConnections: "Aucun assistant connecté pour le moment.",
+    disconnect: "Déconnecter", connectionRevoked: "Assistant déconnecté.", lastUsed: "Dernière utilisation {when}", neverUsed: "Jamais utilisé",
+    confirmDisconnectAssistant: "Déconnecter cet assistant ? Il ne pourra plus envoyer de plans vers votre Garmin.",
     apiStep1: "Récupérer les instructions de format et le schéma JSON.", apiStep2: "Générer le plan en JSON brut.",
     apiStep3: "L'envoyer à /api/v1/plans/validate.", apiStep4: "Corriger chaque erreur de validation structurée.",
     apiStep5: "Envoyer le plan valide à /api/v1/plans.", openApiDocs: "Ouvrir la documentation API interactive ↗",
@@ -187,7 +213,7 @@ function applyLanguage(language, persist = false) {
   if (persist) localStorage.setItem("workoutRelayLanguage", state.language);
   setAuthMode(state.authMode);
   if (state.garmin) renderGarminStatus(state.garmin);
-  if (state.user) { loadHistory(); loadKeys(); }
+  if (state.user) { loadHistory(); loadKeys(); loadConnections(); }
 }
 
 function csrfToken() {
@@ -241,7 +267,7 @@ function showDashboard(user) {
   state.user = user;
   $("#auth-view").classList.add("hidden"); $("#dashboard").classList.remove("hidden"); $("#logout").classList.remove("hidden");
   $("#account-label").textContent = user.email;
-  Promise.all([loadGarmin(), loadHistory(), loadKeys()]);
+  Promise.all([loadGarmin(), loadHistory(), loadKeys(), loadConnections()]);
 }
 function showAuth() {
   state.user = null;
@@ -319,6 +345,23 @@ async function loadHistory() {
     else if (item.status === "completed" && item.result?.counts) detail = t("historyCounts", item.result.counts);
     return `<div class="history-row"><span class="history-main"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.plan_id)}</small></span><span class="status-pill ${item.status === "failed" ? "failed" : ""}">${escapeHtml(t(`status_${item.status}`))}</span><span>${new Intl.DateTimeFormat(state.language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.created_at))}</span>${detail ? `<p class="history-detail ${item.status === "failed" ? "error" : ""}">${escapeHtml(detail)}</p>` : ""}</div>`;
   }).join("");
+}
+
+async function loadConnections() {
+  $("#connector-url").value = `${window.location.origin}/mcp/`;
+  const data = await api("/api/v1/connections");
+  const list = $("#connection-list");
+  if (!data.items.length) { list.innerHTML = `<p class="muted">${escapeHtml(t("noConnections"))}</p>`; return; }
+  const when = (value) => value
+    ? t("lastUsed", { when: new Intl.DateTimeFormat(state.language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)) })
+    : t("neverUsed");
+  list.innerHTML = data.items.map((item) => `<div class="key-row"><span><strong>${escapeHtml(item.client_name)}</strong><small>${escapeHtml(when(item.last_used_at))}</small></span><button type="button" data-connection-id="${escapeHtml(item.id)}">${escapeHtml(t("disconnect"))}</button></div>`).join("");
+  list.querySelectorAll("button").forEach((button) => button.addEventListener("click", async () => {
+    if (!confirm(t("confirmDisconnectAssistant"))) return;
+    await api(`/api/v1/connections/${button.dataset.connectionId}`, { method: "DELETE" });
+    showToast(t("connectionRevoked"));
+    await loadConnections();
+  }));
 }
 
 async function loadKeys() {
@@ -416,6 +459,10 @@ function copyText(textPromise) {
 }
 $("#copy-instructions").addEventListener("click", async () => {
   try { await copyText(instructionsText()); showToast(t("copied")); }
+  catch (_) { showToast(t("copyFailed")); }
+});
+$("#copy-connector").addEventListener("click", async () => {
+  try { await copyText(Promise.resolve(`${window.location.origin}/mcp/`)); showToast(t("copied")); }
   catch (_) { showToast(t("copyFailed")); }
 });
 $("#create-key").addEventListener("click", async (event) => {

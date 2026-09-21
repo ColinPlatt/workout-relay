@@ -11,7 +11,7 @@ activities and never touches Garmin, the database or any account.
 ## What it exposes
 
 Enabled with `MCP_PROBE_ENABLED=true`, it mounts a remote MCP server at
-`/mcp/` offering both delivery shapes, because clients differ in what they
+`/mcp-probe/` offering both delivery shapes, because clients differ in what they
 surface:
 
 | Kind | Name | Notes |
@@ -50,7 +50,7 @@ the experiment is looking for.
 1. Set `MCP_PROBE_ENABLED=true` on the deployment and wait for it to restart.
    Leave everything else alone; the probe needs no account and reaches no
    user data.
-2. Add `https://<your-host>/mcp/` as a custom connector in the assistant, on
+2. Add `https://<your-host>/mcp-probe/` as a custom connector in the assistant, on
    the phone, and note whether connecting is possible without a desktop.
    ([Claude connectors](https://claude.com/docs/connectors/building) ·
    [ChatGPT MCP connections](https://developers.openai.com/plugins/deploy/connect-chatgpt))

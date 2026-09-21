@@ -56,6 +56,12 @@ pytest -q
 docker compose up --build
 ```
 
+Assistants connect through the MCP connector at `/mcp/`: the person adds that
+address in Claude or ChatGPT, signs in once and approves, and the assistant can
+then validate and send plans. No key is shared, and Garmin credentials stay on
+the server. Connected assistants are listed, with one-tap revocation, under
+**Automation**.
+
 The optional MCP file-delivery probe is documented in
 [MCP_PROBE.md](docs/MCP_PROBE.md). It is off by default, serves synthetic
 sample files only, and exists to test whether assistants can read delivered

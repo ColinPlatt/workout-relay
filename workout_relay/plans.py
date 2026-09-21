@@ -115,11 +115,47 @@ def assistant_instructions(language: str = "en", base_url: str = "") -> dict:
     def endpoint(path: str) -> str:
         return f"{root}{path}" if root else path
 
+    connector = {
+        "en": {
+            "url": endpoint("/mcp/"),
+            "preferred": (
+                "When connected through this MCP connector, call its tools "
+                "instead of raw HTTP: get_plan_format, validate_plan_tool, "
+                "submit_plan, get_plan_status, list_recent_plans and "
+                "get_garmin_status. They act for the account that approved "
+                "the connection, so no key is needed."
+            ),
+            "setup": [
+                "Claude: Settings, then Connectors, then Add custom connector, and paste this address.",
+                "ChatGPT (paid plans): Settings, then Security and login, turn on Developer mode, then add this address as a custom connector.",
+                "ChatGPT (free plans): custom connectors are unavailable; upload the plan on the website instead.",
+                "The person signs in to Workout Relay once and approves; their Garmin password is never shared.",
+            ],
+        },
+        "fr": {
+            "url": endpoint("/mcp/"),
+            "preferred": (
+                "Lorsque vous êtes connecté via ce connecteur MCP, utilisez ses "
+                "outils plutôt que le HTTP brut : get_plan_format, "
+                "validate_plan_tool, submit_plan, get_plan_status, "
+                "list_recent_plans et get_garmin_status. Ils agissent pour le "
+                "compte qui a approuvé la connexion ; aucune clé n'est requise."
+            ),
+            "setup": [
+                "Claude : Réglages, puis Connecteurs, puis Ajouter un connecteur personnalisé, et collez cette adresse.",
+                "ChatGPT (offres payantes) : Réglages, puis Sécurité et connexion, activez le mode développeur, puis ajoutez cette adresse comme connecteur personnalisé.",
+                "ChatGPT (offres gratuites) : les connecteurs personnalisés ne sont pas disponibles ; importez le plan sur le site.",
+                "La personne se connecte une fois à Workout Relay et approuve ; son mot de passe Garmin n'est jamais partagé.",
+            ],
+        },
+    }[language if language in ("en", "fr") else "en"]
+
     return {
         "language": language,
         "purpose": purpose,
         "rules": rules,
-        "authentication": "Authorization: Bearer <Workout Relay API key>",
+        "connector": connector,
+        "authentication": "Authorization: Bearer <Workout Relay API key> (HTTP route only; the connector needs no key)",
         "schema_url": endpoint("/api/v1/plan-schema"),
         "example_url": endpoint("/api/v1/plan-example"),
         "validate_url": endpoint("/api/v1/plans/validate"),

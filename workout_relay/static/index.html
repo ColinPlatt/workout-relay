@@ -160,10 +160,34 @@
 
       <section id="section-automation" class="dashboard-section hidden">
         <div class="automation-grid">
+          <article class="card automation-card guide-wide">
+            <p class="step">MCP</p>
+            <h2 data-i18n="connectAssistant">Connect an assistant</h2>
+            <p class="muted" data-i18n="connectAssistantHelp">Add this address as a connector in Claude or ChatGPT. You sign in here once and approve; the assistant never sees your Garmin or Workout Relay password.</p>
+            <div class="inline-form">
+              <input id="connector-url" readonly aria-label="Connector address" data-i18n-aria="connectorAddress">
+              <button id="copy-connector" class="button primary" type="button" data-i18n="copyAddress">Copy address</button>
+            </div>
+            <h3 class="connector-heading" data-i18n="inClaude">In Claude</h3>
+            <ol class="workflow">
+              <li data-i18n="claudeStep1">Open Settings, then Connectors, and choose Add custom connector.</li>
+              <li data-i18n="claudeStep2">Paste the address above and add it. Leave the advanced OAuth fields empty.</li>
+              <li data-i18n="claudeStep3">Adding a connector may need a browser rather than the phone app; once added it works in any chat.</li>
+            </ol>
+            <h3 class="connector-heading" data-i18n="inChatgpt">In ChatGPT</h3>
+            <ol class="workflow">
+              <li data-i18n="chatgptStep1">Paid plans: open Settings, then Security and login, and turn on Developer mode. Connectors then accept a custom server address.</li>
+              <li data-i18n="chatgptStep2">Add the address above as a custom connector and approve the sign-in.</li>
+              <li data-i18n="chatgptStep3">Free plans do not offer custom connectors. Use the Upload tab on this site, which needs no connector.</li>
+            </ol>
+            <p class="muted" data-i18n="connectApprove">Either way you will be asked to sign in to Workout Relay and approve the connection. Then ask the assistant to build a plan and send it.</p>
+            <h3 class="connector-heading" data-i18n="connectedAssistants">Connected assistants</h3>
+            <div id="connection-list" class="key-list"></div>
+          </article>
           <article class="card automation-card">
             <p class="step">API</p>
             <h2 data-i18n="assistantAccess">Assistant access</h2>
-            <p class="muted" data-i18n="assistantHelp">Create a revocable bearer key for ChatGPT, Claude, or your own automation. The full key is displayed only once.</p>
+            <p class="muted" data-i18n="assistantHelp">For a custom GPT or your own scripts, create a revocable bearer key. Add it only to the tool's protected API-authentication field—never paste it into a chat. The full key is shown once. Claude cannot use a bearer key: connect it with the connector above.</p>
             <div class="inline-form">
               <input id="key-name" maxlength="80" data-i18n-placeholder="keyNamePlaceholder" aria-label="API key name" data-i18n-aria="apiKeyName">
               <button id="create-key" class="button primary" type="button" data-i18n="createKey">Create key</button>

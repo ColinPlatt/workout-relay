@@ -6,7 +6,7 @@ import asyncio
 import hmac
 import json
 import logging
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -16,6 +16,9 @@ from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Request, Re
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from mcp.server.auth.routes import create_auth_routes, create_protected_resource_routes
+from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOptions
+from pydantic import AnyHttpUrl
 from pydantic import BaseModel, EmailStr, Field, SecretStr
 from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
@@ -35,6 +38,9 @@ from .database import (
 )
 from .garmin import Connected, GarminError, Gateway, LiveGarminGateway, MfaRequired, MockGarminGateway
 from .mcp_probe import BearerGate, build_server
+from .mcp_server import build_connector
+from .oauth import SCOPES, RelayOAuthProvider, approve, connections, deny, pending_grant, revoke_family
+from .submissions import PlanRejected, check_plan, queue_plan, recent_submissions
 from .plans import assistant_instructions, example_plan, plan_schema, validate_plan
 from .rate_limit import RateLimiter
 from .security import TokenVault, hash_password, hash_token, opaque_token, verify_password
@@ -113,6 +119,20 @@ def create_app(
     queue_event = asyncio.Event()
     worker_stop = asyncio.Event()
 
+    # OAuth requires an HTTPS issuer (localhost excepted), so a development
+    # base URL disables the connector rather than failing startup.
+    connector_possible = settings.connector_enabled and _issuer_usable(settings.base_url)
+    if settings.connector_enabled and not connector_possible:
+        logger.warning(
+            "assistant connector disabled: BASE_URL %s is neither HTTPS nor localhost",
+            settings.base_url,
+        )
+    connector_provider = RelayOAuthProvider(database, settings.base_url) if connector_possible else None
+    connector = (
+        build_connector(settings, database, queue_event.set, connector_provider)
+        if connector_possible
+        else None
+    )
     probe = (
         build_server(
             settings.mcp_probe_samples_dir, settings.base_url, settings.mcp_probe_allowed_hosts
@@ -140,14 +160,15 @@ def create_app(
             upload_worker(database, vault, gateway, upload_locks, queue_event, worker_stop)
         )
         try:
-            if probe is None:
+            async with AsyncExitStack() as transports:
+                if connector is not None:
+                    await transports.enter_async_context(connector.session_manager.run())
+                if probe is not None:
+                    # Synthetic samples only: it reaches neither Garmin nor the
+                    # database, and carries no account of its own.
+                    logger.warning("MCP file-delivery probe is exposed at /mcp-probe/")
+                    await transports.enter_async_context(probe.session_manager.run())
                 yield
-            else:
-                # The probe serves only synthetic samples; it reaches neither
-                # Garmin nor the database, and carries no account of its own.
-                logger.warning("MCP file-delivery probe is exposed at /mcp/")
-                async with probe.session_manager.run():
-                    yield
         finally:
             worker_stop.set()
             queue_event.set()
@@ -169,11 +190,34 @@ def create_app(
     app.state.database = database
     app.state.gateway = gateway
 
+    if connector is not None:
+        # The SDK's OAuth endpoints belong at the root: a client discovering
+        # this server reads /.well-known/… before it ever reaches /mcp/.
+        app.router.routes.extend(
+            create_auth_routes(
+                provider=connector_provider,
+                issuer_url=AnyHttpUrl(settings.base_url),
+                client_registration_options=ClientRegistrationOptions(
+                    enabled=True, valid_scopes=list(SCOPES), default_scopes=list(SCOPES)
+                ),
+                revocation_options=RevocationOptions(enabled=True),
+            )
+        )
+        app.router.routes.extend(
+            create_protected_resource_routes(
+                resource_url=AnyHttpUrl(f"{settings.base_url}/mcp/"),
+                authorization_servers=[AnyHttpUrl(settings.base_url)],
+                scopes_supported=list(SCOPES),
+                resource_name="Workout Relay",
+            )
+        )
+        app.mount("/mcp", connector.streamable_http_app())
+
     if probe is not None:
         probe_app = probe.streamable_http_app()
         if settings.mcp_probe_token:
             probe_app = BearerGate(probe_app, settings.mcp_probe_token)
-        app.mount("/mcp", probe_app)
+        app.mount("/mcp-probe", probe_app)
 
     static = Path(__file__).parent / "static"
     assets = {
@@ -432,6 +476,86 @@ def create_app(
         response.delete_cookie(SESSION_COOKIE)
         response.delete_cookie(CSRF_COOKIE)
 
+    @app.get("/oauth/consent", include_in_schema=False)
+    async def consent_page(request: Request, session_token: str | None = Cookie(default=None, alias=SESSION_COOKIE)):
+        grant = pending_grant(database, request.query_params.get("request", ""))
+        language = "fr" if "fr" in request.headers.get("accept-language", "").lower() else "en"
+        if grant is None:
+            return HTMLResponse(consent_html(language, expired=True), status_code=400)
+        actor_user = None
+        if session_token:
+            with database.session() as db:
+                found = database.actor_from_session(db, session_token)
+                actor_user = found[0].email if found else None
+        return HTMLResponse(
+            consent_html(
+                language,
+                grant=grant,
+                email=actor_user,
+                csrf=request.cookies.get(CSRF_COOKIE, ""),
+            )
+        )
+
+    @app.post("/oauth/consent", include_in_schema=False)
+    async def consent_submit(request: Request):
+        form = await request.form()
+        grant_id = str(form.get("request", ""))
+        language = "fr" if "fr" in request.headers.get("accept-language", "").lower() else "en"
+        session_token = request.cookies.get(SESSION_COOKIE)
+        grant = pending_grant(database, grant_id)
+        if grant is None:
+            return HTMLResponse(consent_html(language, expired=True), status_code=400)
+        if str(form.get("action")) == "deny":
+            target = deny(database, grant_id)
+            return Response(status_code=303, headers={"Location": target or settings.base_url})
+        user = None
+        if session_token:
+            with database.session() as db:
+                found = database.actor_from_session(db, session_token)
+                if found:
+                    user = found[0]
+                    if not hmac.compare_digest(hash_token(str(form.get("csrf", ""))), found[1]):
+                        raise api_error(403, "csrf_failed")
+        if user is None:
+            # Not signed in yet: authenticate inside the consent page itself.
+            key = f"consent-login:{request.client.host if request.client else 'unknown'}"
+            if not limiter.allow(key, 10, 900):
+                raise api_error(429, "rate_limited")
+            email = str(form.get("email", "")).lower()
+            password = str(form.get("password", ""))
+            with database.session() as db:
+                candidate = db.scalar(select(User).where(User.email == email))
+                if not candidate or not verify_password(password, candidate.password_hash):
+                    return HTMLResponse(
+                        consent_html(language, grant=grant, error="invalid_credentials"),
+                        status_code=401,
+                    )
+                response = Response(status_code=303)
+                issue_session(response, db, candidate)
+                database.audit(db, "account.login", candidate.id, {"via": "consent"})
+                db.commit()
+            # Re-enter the page with a session so consent is a deliberate second step.
+            response.headers["Location"] = f"{settings.base_url}/oauth/consent?request={grant_id}"
+            return response
+        target = approve(database, grant_id, user.id)
+        if target is None:
+            return HTMLResponse(consent_html(language, expired=True), status_code=400)
+        return Response(status_code=303, headers={"Location": target})
+
+    @app.get("/api/v1/connections", tags=["Connected assistants"])
+    async def list_connections(current: Actor = Depends(session_actor)):
+        return {
+            "items": [
+                item | {"created_at": iso(item["created_at"]), "last_used_at": iso(item["last_used_at"])}
+                for item in connections(database, current.user.id)
+            ]
+        }
+
+    @app.delete("/api/v1/connections/{family}", status_code=204, tags=["Connected assistants"])
+    async def revoke_connection(family: str, current: Actor = Depends(session_mutation_actor)):
+        if not revoke_family(database, current.user.id, family):
+            raise api_error(404, "connection_not_found")
+
     @app.get("/api/v1/api-keys", tags=["API keys"])
     async def list_api_keys(current: Actor = Depends(session_actor), db: Session = Depends(db_session)):
         items = db.scalars(
@@ -548,10 +672,10 @@ def create_app(
         request: Request,
         current: Actor = Depends(mutation_actor),
     ):
-        check_size(plan, settings.max_plan_bytes)
-        errors = validate_plan(plan)
-        if errors:
-            raise HTTPException(422, detail={"code": "plan_invalid", "errors": errors})
+        try:
+            check_plan(plan, settings.max_plan_bytes)
+        except PlanRejected as rejected:
+            raise plan_error(rejected)
         return {
             "valid": True,
             "plan_id": plan["plan_id"],
@@ -565,26 +689,12 @@ def create_app(
         current: Actor = Depends(mutation_actor),
         db: Session = Depends(db_session),
     ):
-        check_size(plan, settings.max_plan_bytes)
-        errors = validate_plan(plan)
-        if errors:
-            raise HTTPException(422, detail={"code": "plan_invalid", "errors": errors})
-        connection = db.get(GarminConnection, current.user.id)
-        if not connection or connection.status != "connected":
-            raise api_error(409, "garmin_not_connected")
-
-        submission = PlanSubmission(
-            user_id=current.user.id,
-            plan_id=plan["plan_id"],
-            title=plan["title"],
-            content=json.dumps(plan, separators=(",", ":")),
-            status="queued",
-        )
-        db.add(submission)
-        database.audit(db, "plan.queued", current.user.id, {"submission_id": submission.id})
-        db.commit()
+        try:
+            accepted = queue_plan(db, database, current.user.id, plan, settings.max_plan_bytes)
+        except PlanRejected as rejected:
+            raise plan_error(rejected)
         queue_event.set()
-        return {"id": submission.id, "status": "queued", "workout_count": len(plan["workouts"])}
+        return accepted.as_dict()
 
     @app.get("/api/v1/plans", tags=["Plans"])
     async def list_plans(current: Actor = Depends(actor), db: Session = Depends(db_session)):
@@ -990,6 +1100,139 @@ async def drain_thread(function, *args, **kwargs):
 
 def api_error(status: int, code: str) -> HTTPException:
     return HTTPException(status, detail={"code": code})
+
+
+CONSENT_TEXT = {
+    "en": {
+        "title": "Connect an assistant",
+        "intro": "{client} is asking to connect to your Workout Relay account.",
+        "allows": "If you approve, it will be able to:",
+        "plans:read": "read your plan format, submissions and Garmin connection status",
+        "plans:write": "send workout plans to your Garmin calendar",
+        "never": "It will never receive your Garmin password, your Garmin session tokens, or your Workout Relay password.",
+        "revoke": "You can revoke this at any time under Settings, Connected assistants.",
+        "signin": "Sign in to continue",
+        "email": "Email",
+        "password": "Password",
+        "continue": "Continue",
+        "approve": "Approve",
+        "deny": "Deny",
+        "as": "Signed in as {email}",
+        "expired": "This request has expired or was already used. Start the connection again from the assistant.",
+        "invalid_credentials": "Incorrect email or password.",
+    },
+    "fr": {
+        "title": "Connecter un assistant",
+        "intro": "{client} demande à se connecter à votre compte Workout Relay.",
+        "allows": "Si vous acceptez, il pourra :",
+        "plans:read": "lire votre format de plan, vos envois et l'état de la connexion Garmin",
+        "plans:write": "envoyer des plans d'entraînement vers votre calendrier Garmin",
+        "never": "Il ne recevra jamais votre mot de passe Garmin, vos jetons de session Garmin, ni votre mot de passe Workout Relay.",
+        "revoke": "Vous pouvez révoquer cet accès à tout moment dans Réglages, Assistants connectés.",
+        "signin": "Connectez-vous pour continuer",
+        "email": "E-mail",
+        "password": "Mot de passe",
+        "continue": "Continuer",
+        "approve": "Autoriser",
+        "deny": "Refuser",
+        "as": "Connecté en tant que {email}",
+        "expired": "Cette demande a expiré ou a déjà été utilisée. Relancez la connexion depuis l'assistant.",
+        "invalid_credentials": "E-mail ou mot de passe incorrect.",
+    },
+}
+
+CONSENT_STYLE = (
+    "body{margin:0;padding:24px 16px;background:#f6f3e9;color:#14372d;"
+    "font:16px/1.5 ui-sans-serif,system-ui,sans-serif}"
+    "main{max-width:420px;margin:0 auto;background:#fffdf7;border:1px solid #d9d9ce;"
+    "border-radius:18px;padding:24px}"
+    "h1{font-size:22px;margin:0 0 16px}ul{padding-left:20px}li{margin-bottom:6px}"
+    "label{display:block;font-size:13px;font-weight:700;margin-bottom:12px}"
+    "input{width:100%;min-height:47px;padding:0 13px;font:inherit;border:1px solid #d9d9ce;"
+    "border-radius:10px;box-sizing:border-box;margin-top:6px}"
+    "button{min-height:47px;width:100%;font:inherit;font-weight:800;border-radius:10px;"
+    "border:1px solid transparent;cursor:pointer;margin-top:10px}"
+    ".primary{background:#087f5b;color:#fff}.ghost{background:transparent;border-color:#d9d9ce;color:#14372d}"
+    ".muted{color:#68766f;font-size:13px}.error{color:#ad352d;font-size:13px}"
+)
+
+
+def _issuer_usable(base_url: str) -> bool:
+    from urllib.parse import urlsplit
+
+    parts = urlsplit(base_url)
+    host = (parts.hostname or "").lower()
+    return parts.scheme == "https" or host == "localhost" or host.startswith("127.0.0.1")
+
+
+def consent_html(
+    language: str,
+    grant: dict | None = None,
+    email: str | None = None,
+    csrf: str = "",
+    error: str | None = None,
+    expired: bool = False,
+) -> str:
+    """The consent screen, rendered server-side so it needs no script."""
+    text = CONSENT_TEXT.get(language, CONSENT_TEXT["en"])
+
+    def esc(value: str) -> str:
+        return (
+            str(value)
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+        )
+
+    head = (
+        f'<!doctype html><html lang="{language}"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        f"<title>{esc(text['title'])}</title><style>{CONSENT_STYLE}</style></head><body><main>"
+    )
+    if expired or grant is None:
+        return head + f"<h1>{esc(text['title'])}</h1><p>{esc(text['expired'])}</p></main></body></html>"
+
+    scopes = "".join(
+        f"<li>{esc(text.get(scope, scope))}</li>" for scope in grant["scopes"] or ["plans:read"]
+    )
+    body = [
+        f"<h1>{esc(text['title'])}</h1>",
+        f"<p>{esc(text['intro'].format(client=grant['client_name']))}</p>",
+        f"<p class='muted'>{esc(text['allows'])}</p><ul>{scopes}</ul>",
+        f"<p class='muted'>{esc(text['never'])}</p>",
+        f"<p class='muted'>{esc(text['revoke'])}</p>",
+    ]
+    if error:
+        body.append(f"<p class='error'>{esc(text.get(error, error))}</p>")
+    body.append(f"<form method='post' action='/oauth/consent'>")
+    body.append(f"<input type='hidden' name='request' value='{esc(grant['id'])}'>")
+    if email:
+        body.append(f"<p class='muted'>{esc(text['as'].format(email=email))}</p>")
+        body.append(f"<input type='hidden' name='csrf' value='{esc(csrf)}'>")
+        body.append(f"<button class='primary' name='action' value='approve'>{esc(text['approve'])}</button>")
+    else:
+        body.append(f"<p class='muted'>{esc(text['signin'])}</p>")
+        body.append(
+            f"<label>{esc(text['email'])}<input name='email' type='email' autocomplete='email' required></label>"
+        )
+        body.append(
+            f"<label>{esc(text['password'])}<input name='password' type='password' "
+            "autocomplete='current-password' required></label>"
+        )
+        body.append(f"<button class='primary' name='action' value='login'>{esc(text['continue'])}</button>")
+    body.append(f"<button class='ghost' name='action' value='deny'>{esc(text['deny'])}</button>")
+    body.append("</form>")
+    return head + "".join(body) + "</main></body></html>"
+
+
+def plan_error(rejected: PlanRejected) -> HTTPException:
+    """Keep the REST status codes the mobile client already understands."""
+    if rejected.code == "plan_invalid":
+        return HTTPException(422, detail={"code": rejected.code, "errors": rejected.errors})
+    if rejected.code == "plan_too_large":
+        return api_error(413, rejected.code)
+    return api_error(409, rejected.code)
 
 
 def check_size(plan: dict, maximum: int) -> None:

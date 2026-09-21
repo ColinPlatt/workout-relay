@@ -103,6 +103,63 @@ class WorkoutOperation(Base):
     progress: Mapped[str] = mapped_column(Text, default="{}")
 
 
+class OAuthClient(Base):
+    """An assistant platform that registered itself, usually via RFC 7591."""
+
+    __tablename__ = "oauth_clients"
+    client_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    secret_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    name: Mapped[str] = mapped_column(String(200), default="")
+    document: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class OAuthGrant(Base):
+    """One authorization, from the redirect through to the issued code.
+
+    The code is stored hashed and single-use: `stage` moves pending -> issued
+    -> used, so a replayed code is visible rather than silently accepted.
+    """
+
+    __tablename__ = "oauth_grants"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    client_id: Mapped[str] = mapped_column(String(64), index=True)
+    user_id: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    stage: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    code_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    scopes: Mapped[str] = mapped_column(String(200), default="")
+    code_challenge: Mapped[str] = mapped_column(String(200), default="")
+    redirect_uri: Mapped[str] = mapped_column(Text)
+    redirect_uri_explicit: Mapped[bool] = mapped_column(default=True)
+    resource: Mapped[str | None] = mapped_column(Text, nullable=True)
+    state: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class OAuthToken(Base):
+    """Access and refresh tokens, stored only as hashes.
+
+    `family` ties a refresh token to the access tokens minted from it, so
+    revoking a connection stops every token it ever issued.
+    """
+
+    __tablename__ = "oauth_tokens"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    family: Mapped[str] = mapped_column(String(36), index=True)
+    kind: Mapped[str] = mapped_column(String(10), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    client_id: Mapped[str] = mapped_column(String(64), index=True)
+    scopes: Mapped[str] = mapped_column(String(200), default="")
+    resource: Mapped[str | None] = mapped_column(Text, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
