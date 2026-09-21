@@ -266,6 +266,26 @@ def create_app(
     }
 
     @app.middleware("http")
+    async def behind_the_proxy(request: Request, call_next):
+        """Undo two things that break a connector before it can authenticate.
+
+        The platform terminates TLS upstream. Unless the forwarded scheme is
+        honoured, the app believes it is serving plain HTTP and emits http://
+        redirects, which a client refuses to follow from an https:// page.
+        Only an upgrade is applied, never a downgrade.
+
+        Clients also strip the trailing slash from the connector address, and
+        a redirect is not a safe answer for a POST that carries a bearer token
+        and a body, so /mcp is served directly.
+        """
+        forwarded = request.headers.get("x-forwarded-proto", "").split(",")[0].strip()
+        if forwarded == "https":
+            request.scope["scheme"] = "https"
+        if request.scope["path"] == "/mcp":
+            request.scope["path"] = "/mcp/"
+        return await call_next(request)
+
+    @app.middleware("http")
     async def security_headers(request: Request, call_next):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"

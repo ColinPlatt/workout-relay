@@ -572,3 +572,40 @@ async def test_resource_metadata_is_discoverable_from_the_bare_domain(connector_
                 body = response.json()
                 assert body["resource"] == "http://localhost:8000/mcp/"
                 assert body["authorization_servers"] == ["http://localhost:8000/"]
+
+
+@pytest.mark.anyio
+async def test_the_connector_answers_without_the_trailing_slash(connector_settings):
+    """Clients strip it. A redirect is not a safe answer for a POST carrying
+    a bearer token and a body, so the endpoint is served at both paths."""
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            for path in ("/mcp", "/mcp/"):
+                response = await client.post(
+                    path,
+                    headers={"Content-Type": "application/json",
+                             "Accept": "application/json, text/event-stream",
+                             "Authorization": "Bearer nope"},
+                    json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+                )
+                assert response.status_code == 401, path
+                assert "resource_metadata" in response.headers.get("www-authenticate", "")
+
+
+@pytest.mark.anyio
+async def test_a_forwarded_https_request_is_not_downgraded(connector_settings):
+    """Behind the platform's TLS the app must not emit http:// redirects."""
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            # /api/v1/plans has no trailing-slash twin, so use the router's own
+            # redirect on a path that does: the mounted probe is absent, and
+            # what matters is the scheme the app believes it is serving.
+            response = await client.post(
+                "/",
+                headers={"Content-Type": "application/json", "X-Forwarded-Proto": "https"},
+                json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            )
+            assert response.status_code == 307
+            assert not response.headers["location"].startswith("http://")
