@@ -1373,6 +1373,10 @@ def connection_json(
         "connected": live,
         "status": status,
         "display_name": item.display_name,
+        # created_at is set when the connection is established and survives a
+        # re-authentication, so it reads as "connected since"; last_validated_at
+        # moves each time the Garmin sign-in is repeated.
+        "connected_at": iso(item.created_at),
         "last_validated_at": iso(item.last_validated_at),
         "retention": retention,
         "visit_expires_at": iso(tokens_store.expires_at(item)) if tokens_store else None,

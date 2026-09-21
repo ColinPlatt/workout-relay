@@ -189,3 +189,45 @@ async def test_the_notice_admits_that_activity_ids_are_stored(onboarding_setting
     notice = __import__("pathlib").Path("docs/PRIVACY.md").read_text()
     assert "not stored here, and it requires" not in notice  # the old, false claim
     assert "the **IDs** of the activities shown to an assistant" in notice
+
+
+@pytest.mark.anyio
+async def test_the_connection_reports_when_it_was_made(onboarding_settings):
+    app = create_app(onboarding_settings)
+    async with app.router.lifespan_context(app):
+        async with await client_for(app) as client:
+            csrf = await register_account(client)
+            before = (await client.get("/api/v1/garmin/status")).json()
+            assert before["connected"] is False and before.get("connected_at") is None
+
+            await connect_garmin(client, csrf)
+            status = (await client.get("/api/v1/garmin/status")).json()
+            assert status["connected_at"] is not None
+            assert status["last_validated_at"] is not None
+            assert status["retention"] == "persistent"
+
+            page = (await client.get("/")).text
+            script = (await client.get("/static/app.js")).text
+            assert 'id="garmin-details"' in page
+            for key in ("detailConnectedSince", "detailAccount", "detailStorage"):
+                assert script.count(key) >= 2  # both languages
+
+
+@pytest.mark.anyio
+async def test_reconnecting_keeps_connected_since_and_moves_last_sign_in(onboarding_settings):
+    """"Connected since" should survive a re-authentication."""
+    import asyncio
+
+    app = create_app(onboarding_settings)
+    async with app.router.lifespan_context(app):
+        async with await client_for(app) as client:
+            csrf = await register_account(client)
+            await connect_garmin(client, csrf)
+            first = (await client.get("/api/v1/garmin/status")).json()
+
+            await asyncio.sleep(0.01)
+            await connect_garmin(client, csrf)
+            again = (await client.get("/api/v1/garmin/status")).json()
+
+            assert again["connected_at"] == first["connected_at"]
+            assert again["last_validated_at"] >= first["last_validated_at"]

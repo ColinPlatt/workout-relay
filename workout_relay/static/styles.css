@@ -254,3 +254,7 @@ footer .text-link { border: 0; background: transparent; cursor: pointer; padding
 .badge { padding: 2px 9px; background: var(--mint); color: var(--green-dark); border-radius: 99px;
   font-size: 12px; font-weight: 800; }
 .history-actions { display: flex; align-items: center; gap: 8px; }
+
+.detail-list { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0 0 16px; font-size: 14px; }
+.detail-list dt { color: var(--muted); }
+.detail-list dd { margin: 0; text-align: right; font-weight: 650; }

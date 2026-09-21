@@ -37,6 +37,9 @@ const translations = {
     assistantThreeTitle: "Sign in here and approve",
     assistantThreeBody: "Your assistant sends you back here to sign in once and approve. It never sees your Garmin or Workout Relay password.",
     connectedBadge: "Connected", clearHistory: "Clear history",
+    detailConnectedSince: "Connected since", detailLastSignIn: "Last Garmin sign-in",
+    detailAccount: "Garmin account", detailStorage: "Session kept", detailExpires: "Expires",
+    storageVisit: "This visit only", storageKeep: "Until you disconnect",
     confirmClearHistory: "Clear your plan history? Finished submissions are deleted. Workouts already in Garmin are untouched, and sending the same plan again will still update them rather than create duplicates.",
     historyCleared: "History cleared: {removed} removed.",
     connectAssistant: "Connect an assistant", connectorAddress: "Connector address", copyAddress: "Copy address",
@@ -181,6 +184,9 @@ const translations = {
     assistantThreeTitle: "Connectez-vous ici et approuvez",
     assistantThreeBody: "Votre assistant vous renvoie ici pour vous connecter une fois et approuver. Il ne voit jamais vos mots de passe Garmin ou Workout Relay.",
     connectedBadge: "Connecté", clearHistory: "Effacer l'historique",
+    detailConnectedSince: "Connecté depuis", detailLastSignIn: "Dernière connexion Garmin",
+    detailAccount: "Compte Garmin", detailStorage: "Session conservée", detailExpires: "Expire",
+    storageVisit: "Cette visite uniquement", storageKeep: "Jusqu'à déconnexion",
     confirmClearHistory: "Effacer votre historique de plans ? Les envois terminés sont supprimés. Les séances déjà dans Garmin ne sont pas touchées, et renvoyer le même plan les mettra à jour au lieu de créer des doublons.",
     historyCleared: "Historique effacé : {removed} supprimé(s).",
     connectAssistant: "Connecter un assistant", connectorAddress: "Adresse du connecteur", copyAddress: "Copier l'adresse",
@@ -383,7 +389,12 @@ function renderGarminStatus(status) {
   const card = $("#garmin-card"); const strong = card.querySelector("strong"); const small = card.querySelector("small");
   card.classList.toggle("connected", status.connected); card.classList.toggle("attention", status.status === "reauthentication_required");
   if (status.connected) {
-    strong.textContent = t("garminConnected"); small.textContent = status.mode === "mock" ? t("mockConnection") : t("connectedAs", { name: status.display_name || "Garmin" });
+    strong.textContent = t("garminConnected");
+    const since = status.connected_at
+      ? new Intl.DateTimeFormat(state.language, { dateStyle: "medium" }).format(new Date(status.connected_at))
+      : "";
+    const who = status.mode === "mock" ? t("mockConnection") : t("connectedAs", { name: status.display_name || "Garmin" });
+    small.textContent = since ? `${who} · ${t("detailConnectedSince").toLowerCase()} ${since}` : who;
   } else if (status.status === "reauthentication_required") {
     strong.textContent = t("garminNeedsLogin"); small.textContent = t("tapToManage");
   } else { strong.textContent = t("garminNotConnected"); small.textContent = t("tapToManage"); }
@@ -396,6 +407,23 @@ async function openGarminDialog() {
   $("#garmin-login-form").classList.toggle("hidden", status.connected);
   $("#garmin-mfa-form").classList.add("hidden");
   $("#garmin-name").textContent = status.display_name || "";
+  const moment = (value, withTime = true) => value
+    ? new Intl.DateTimeFormat(state.language, withTime
+        ? { dateStyle: "medium", timeStyle: "short" }
+        : { timeStyle: "short" }).format(new Date(value))
+    : "—";
+  const rows = [];
+  if (status.display_name) rows.push([t("detailAccount"), status.display_name]);
+  if (status.connected_at) rows.push([t("detailConnectedSince"), moment(status.connected_at)]);
+  // Only worth a line when a re-authentication has happened since.
+  if (status.last_validated_at && status.last_validated_at !== status.connected_at) {
+    rows.push([t("detailLastSignIn"), moment(status.last_validated_at)]);
+  }
+  rows.push([t("detailStorage"), status.retention === "persistent" ? t("storageKeep") : t("storageVisit")]);
+  if (status.visit_expires_at) rows.push([t("detailExpires"), moment(status.visit_expires_at, false)]);
+  $("#garmin-details").innerHTML = rows
+    .map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd>`)
+    .join("");
   const expiry = status.visit_expires_at
     ? new Intl.DateTimeFormat(state.language, { timeStyle: "short" }).format(new Date(status.visit_expires_at))
     : "";
