@@ -75,6 +75,13 @@ class Settings:
             raise ValueError("PLAN_RETENTION_DAYS must be positive")
         if self.max_plan_bytes < 1:
             raise ValueError("MAX_PLAN_BYTES must be positive")
+        if _looks_pooled(self.database_url):
+            raise ValueError(
+                "DATABASE_URL points at a transaction pooler, which silently "
+                "breaks the session advisory lock that keeps one uploader. Use "
+                "the direct connection string (Neon calls it "
+                "DATABASE_URL_UNPOOLED)."
+            )
         if not self.master_encryption_key:
             raise ValueError("MASTER_ENCRYPTION_KEY is required")
         try:
@@ -100,6 +107,12 @@ def _sqlalchemy_url(url: str) -> str:
         if url.startswith(scheme):
             return "postgresql+psycopg://" + url.removeprefix(scheme)
     return url
+
+
+def _looks_pooled(url: str) -> bool:
+    """Spot the connection strings that break session-scoped advisory locks."""
+    host = url.split("@")[-1].split("/")[0].lower()
+    return "-pooler." in host or "pgbouncer" in host
 
 
 def _development_key(database_url: str) -> str:

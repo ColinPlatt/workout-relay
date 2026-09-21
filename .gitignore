@@ -10,3 +10,5 @@ data/
 *.db-shm
 *.db-wal
 *.upload.lock
+.neon
+.env.local

@@ -104,7 +104,13 @@ and paste its connection string when Render prompts for `DATABASE_URL`.
 **Use the direct connection string, not a pooled one.** Providers that offer a
 transaction pooler (Neon's `-pooler` host, PgBouncer and similar) break session
 advisory locks silently, which is how a single uploader is enforced. Uploads
-would then overlap between overlapping deployments.
+would then overlap between overlapping deployments. Startup refuses a pooled
+URL rather than failing quietly later.
+
+Note the trap: `neon link` writes both endpoints into `.env.local`, and the one
+named plain `DATABASE_URL` there is the **pooled** endpoint. The value to paste
+into Render is `DATABASE_URL_UNPOOLED`. That file holds live credentials and is
+gitignored; the application does not read it, since it loads `.env`.
 
 What the free plan costs you, in behaviour rather than money:
 
