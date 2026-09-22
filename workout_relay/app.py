@@ -233,22 +233,32 @@ def create_app(
                 resource_name="Workout Relay",
             )
         )
-        @app.get("/.well-known/oauth-protected-resource", include_in_schema=False)
-        async def resource_metadata_at_the_root():
-            """Point a client that was given the site address at the connector.
+        def resource_metadata(resource: str) -> dict:
+            """RFC 9728 document naming this exact resource identifier.
 
-            RFC 9728 puts this document under a path derived from the resource,
-            so a client given https://host/mcp/ finds it. One given the bare
-            domain looks here, found nothing, and fell back to guessing that
-            the domain itself was the endpoint.
+            Clients compare the `resource` they read against the URL they were
+            given, and they disagree about the trailing slash: one connects to
+            /mcp, another to /mcp/. Each path therefore answers with its own
+            identifier rather than redirecting, because a redirect changes the
+            identifier out from under the comparison. The authorization server
+            is named exactly as its own metadata spells it.
             """
             return {
-                "resource": f"{settings.base_url}/mcp/",
+                "resource": resource,
                 "authorization_servers": [f"{settings.base_url}/"],
                 "scopes_supported": list(SCOPES),
                 "bearer_methods_supported": ["header"],
                 "resource_name": "Workout Relay",
             }
+
+        @app.get("/.well-known/oauth-protected-resource/mcp", include_in_schema=False)
+        async def resource_metadata_without_slash():
+            return resource_metadata(f"{settings.base_url}/mcp")
+
+        @app.get("/.well-known/oauth-protected-resource", include_in_schema=False)
+        async def resource_metadata_at_the_root():
+            # For a client given the site address: point it at the connector.
+            return resource_metadata(f"{settings.base_url}/mcp")
 
         app.mount("/mcp", connector.streamable_http_app())
 

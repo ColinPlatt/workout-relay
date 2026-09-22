@@ -565,12 +565,19 @@ async def test_resource_metadata_is_discoverable_from_the_bare_domain(connector_
     app = create_app(connector_settings)
     async with app.router.lifespan_context(app):
         async with await app_client(app) as client:
-            for path in ("/.well-known/oauth-protected-resource",
-                         "/.well-known/oauth-protected-resource/mcp/"):
+            # Clients disagree about the trailing slash, and compare the
+            # identifier they read against the URL they were given, so each
+            # path answers for itself rather than redirecting.
+            expected = {
+                "/.well-known/oauth-protected-resource": "http://localhost:8000/mcp",
+                "/.well-known/oauth-protected-resource/mcp": "http://localhost:8000/mcp",
+                "/.well-known/oauth-protected-resource/mcp/": "http://localhost:8000/mcp/",
+            }
+            for path, resource in expected.items():
                 response = await client.get(path)
                 assert response.status_code == 200, path
                 body = response.json()
-                assert body["resource"] == "http://localhost:8000/mcp/"
+                assert body["resource"] == resource, path
                 assert body["authorization_servers"] == ["http://localhost:8000/"]
 
 
