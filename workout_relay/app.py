@@ -17,7 +17,7 @@ from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Request, Re
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from mcp.server.auth.routes import build_metadata, create_auth_routes, create_protected_resource_routes
+from mcp.server.auth.routes import build_metadata, create_auth_routes
 from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOptions
 from pydantic import AnyHttpUrl
 from pydantic import BaseModel, EmailStr, Field, SecretStr
@@ -249,14 +249,6 @@ def create_app(
             )
             if getattr(route, "path", "") != metadata_path
         )
-        app.router.routes.extend(
-            create_protected_resource_routes(
-                resource_url=AnyHttpUrl(f"{settings.base_url}/mcp/"),
-                authorization_servers=[AnyHttpUrl(settings.base_url)],
-                scopes_supported=list(SCOPES),
-                resource_name="Workout Relay",
-            )
-        )
         def resource_metadata(resource: str) -> dict:
             """RFC 9728 document naming this exact resource identifier.
 
@@ -280,6 +272,10 @@ def create_app(
         @app.get("/.well-known/oauth-protected-resource/mcp", include_in_schema=False)
         async def resource_metadata_without_slash():
             return resource_metadata(f"{settings.base_url}/mcp")
+
+        @app.get("/.well-known/oauth-protected-resource/mcp/", include_in_schema=False)
+        async def resource_metadata_with_slash():
+            return resource_metadata(f"{settings.base_url}/mcp/")
 
         @app.get("/.well-known/oauth-protected-resource", include_in_schema=False)
         async def resource_metadata_at_the_root():

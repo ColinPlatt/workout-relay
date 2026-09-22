@@ -150,7 +150,7 @@ async def test_discovery_documents_live_at_the_site_root(connector_settings):
 
             resource = await client.get("/.well-known/oauth-protected-resource/mcp/")
             assert resource.status_code == 200, resource.text
-            assert resource.json()["authorization_servers"] == ["http://localhost:8000/"]
+            assert resource.json()["authorization_servers"] == ["http://localhost:8000"]
 
 
 @pytest.mark.anyio
