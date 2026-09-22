@@ -618,3 +618,27 @@ async def test_a_forwarded_https_request_is_not_downgraded(connector_settings):
             )
             assert response.status_code == 307
             assert not response.headers["location"].startswith("http://")
+
+
+@pytest.mark.anyio
+async def test_the_challenge_names_the_document_clients_can_match(connector_settings):
+    """The 401 points at the metadata for /mcp, whose identifier is /mcp.
+
+    Pointing at the trailing-slash document made a client read an identifier
+    that did not match the URL it had been given, and refuse to connect.
+    """
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            response = await client.post(
+                "/mcp",
+                headers={"Content-Type": "application/json",
+                         "Accept": "application/json, text/event-stream"},
+                json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            )
+            assert response.status_code == 401
+            challenge = response.headers["www-authenticate"]
+            assert 'resource_metadata="http://localhost:8000/.well-known/oauth-protected-resource/mcp"' in challenge
+
+            document = (await client.get("/.well-known/oauth-protected-resource/mcp")).json()
+            assert document["resource"] == "http://localhost:8000/mcp"

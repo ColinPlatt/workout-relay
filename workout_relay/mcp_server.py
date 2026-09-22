@@ -106,7 +106,9 @@ def build_connector(
         token_verifier=ProviderTokenVerifier(provider),
         auth=AuthSettings(
             issuer_url=AnyHttpUrl(settings.base_url),
-            resource_server_url=AnyHttpUrl(f"{settings.base_url}/mcp/"),
+            # Clients connect to /mcp, so that is the canonical identifier:
+            # the challenge points at its document, and the two agree.
+            resource_server_url=AnyHttpUrl(f"{settings.base_url}/mcp"),
             required_scopes=[],  # Authentication here; authorization per tool.
             # Our tokens are bound to an account and a client, and clients do
             # not all send a resource. Audience checking is a later hardening.
