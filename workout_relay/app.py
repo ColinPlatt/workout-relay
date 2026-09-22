@@ -17,7 +17,7 @@ from fastapi import Cookie, Depends, FastAPI, Header, HTTPException, Request, Re
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from mcp.server.auth.routes import create_auth_routes, create_protected_resource_routes
+from mcp.server.auth.routes import build_metadata, create_auth_routes, create_protected_resource_routes
 from mcp.server.auth.settings import ClientRegistrationOptions, RevocationOptions
 from pydantic import AnyHttpUrl
 from pydantic import BaseModel, EmailStr, Field, SecretStr
@@ -215,15 +215,39 @@ def create_app(
     if connector is not None:
         # The SDK's OAuth endpoints belong at the root: a client discovering
         # this server reads /.well-known/… before it ever reaches /mcp/.
+        registration_options = ClientRegistrationOptions(
+            enabled=True, valid_scopes=list(SCOPES), default_scopes=list(SCOPES)
+        )
+        revocation_options = RevocationOptions(enabled=True)
+        metadata_path = "/.well-known/oauth-authorization-server"
+
+        @app.get(metadata_path, include_in_schema=False)
+        async def authorization_server_metadata():
+            """The SDK's document, with the issuer spelled as clients expect.
+
+            Pydantic renders a bare origin with a trailing slash, so the issuer
+            came out as https://host/ while a client comparing it against the
+            origin it was given, https://host, refused to connect. The
+            endpoints are unaffected; only the bare origin is normalized.
+            """
+            document = build_metadata(
+                issuer_url=AnyHttpUrl(settings.base_url),
+                service_documentation_url=None,
+                client_registration_options=registration_options,
+                revocation_options=revocation_options,
+            ).model_dump(mode="json", exclude_none=True)
+            document["issuer"] = settings.base_url
+            return document
+
         app.router.routes.extend(
-            create_auth_routes(
+            route
+            for route in create_auth_routes(
                 provider=connector_provider,
                 issuer_url=AnyHttpUrl(settings.base_url),
-                client_registration_options=ClientRegistrationOptions(
-                    enabled=True, valid_scopes=list(SCOPES), default_scopes=list(SCOPES)
-                ),
-                revocation_options=RevocationOptions(enabled=True),
+                client_registration_options=registration_options,
+                revocation_options=revocation_options,
             )
+            if getattr(route, "path", "") != metadata_path
         )
         app.router.routes.extend(
             create_protected_resource_routes(
@@ -245,7 +269,9 @@ def create_app(
             """
             return {
                 "resource": resource,
-                "authorization_servers": [f"{settings.base_url}/"],
+                # Spelled exactly as the issuer above, without a trailing
+                # slash, or a client comparing the two rejects the pair.
+                "authorization_servers": [settings.base_url],
                 "scopes_supported": list(SCOPES),
                 "bearer_methods_supported": ["header"],
                 "resource_name": "Workout Relay",

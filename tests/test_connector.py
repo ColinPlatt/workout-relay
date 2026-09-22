@@ -142,6 +142,7 @@ async def test_discovery_documents_live_at_the_site_root(connector_settings):
             metadata = await client.get("/.well-known/oauth-authorization-server")
             assert metadata.status_code == 200, metadata.text
             body = metadata.json()
+            assert body["issuer"] == "http://localhost:8000"
             assert body["authorization_endpoint"] == "http://localhost:8000/authorize"
             assert body["token_endpoint"] == "http://localhost:8000/token"
             assert body["registration_endpoint"] == "http://localhost:8000/register"
@@ -578,7 +579,8 @@ async def test_resource_metadata_is_discoverable_from_the_bare_domain(connector_
                 assert response.status_code == 200, path
                 body = response.json()
                 assert body["resource"] == resource, path
-                assert body["authorization_servers"] == ["http://localhost:8000/"]
+                # Spelled exactly as the issuer, which clients compare against.
+                assert body["authorization_servers"] == ["http://localhost:8000"]
 
 
 @pytest.mark.anyio
