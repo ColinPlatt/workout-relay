@@ -71,8 +71,11 @@ database access; it does not protect against malicious production code.
 `activities:read` is a separate Workout Relay permission, not a Garmin scope.
 Fresh OAuth consent or explicit API-key selection is required; existing grants
 cannot acquire it by refresh. It shares health/run metrics, including heart
-rate, with the authorized assistant. Responses use an allowlist and exclude GPS
-tracks and raw files, but activity names may themselves reveal locations.
+rate, with the authorized assistant. Garmin may send the server JSON responses
+containing GPS coordinates. The server processes them in memory and uses an
+allowlist to remove coordinates and route data before delivering filtered
+metrics to the assistant; this path requests no FIT or TCX file. Activity names
+and times may still reveal locations indirectly.
 Disable activity/MCP response-body capture in external monitoring. Revocation
 blocks future requests, not data already shared with an assistant.
 
@@ -114,7 +117,10 @@ est partagée entre les instances.
 `activities:read` est une autorisation Workout Relay distincte, pas une portée
 Garmin. Elle exige un nouveau consentement OAuth ou un choix explicite pour
 une nouvelle clé API. Elle partage des mesures de santé/course, dont la
-fréquence cardiaque, avec l'assistant autorisé, sans traces GPS ni fichiers
-bruts. Le nom d'une activité peut toutefois révéler un lieu. Désactivez la
+fréquence cardiaque, avec l'assistant autorisé. Garmin peut envoyer au serveur
+des réponses JSON contenant des coordonnées GPS. Le serveur les traite en
+mémoire et supprime les coordonnées et le tracé avant de transmettre les
+mesures filtrées à l'assistant ; ce parcours ne demande aucun fichier FIT ou
+TCX. Le nom et l'heure d'une activité peuvent toutefois révéler un lieu. Désactivez la
 capture des réponses activités/MCP dans les outils de supervision. La révocation
 bloque les futures requêtes, sans effacer les données déjà partagées.

@@ -185,10 +185,14 @@ async def test_the_notice_admits_that_activity_ids_are_stored(onboarding_setting
             assert 'data-i18n="privacyKeptActivityIds"' in page
             assert 'data-i18n="privacyKeptSessions"' in page
             assert script.count("privacyKeptActivityIds") == 2
+            assert "Garmin may send Workout Relay an activity response containing GPS coordinates" in script
+            assert "before delivering filtered metrics to the AI" in script
+            assert "Garmin peut envoyer à Workout Relay une réponse contenant des coordonnées GPS" in script
 
     notice = __import__("pathlib").Path("docs/PRIVACY.md").read_text()
     assert "not stored here, and it requires" not in notice  # the old, false claim
     assert "the **IDs** of the activities shown to an assistant" in notice
+    assert "before delivering the remaining" in notice
 
 
 @pytest.mark.anyio

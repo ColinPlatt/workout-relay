@@ -128,7 +128,11 @@ async def test_busy_and_rate_limits(connector_settings):
 
 def test_activity_consent_is_explicit_in_both_languages():
     assert "heart rate" in CONSENT_TEXT["en"]["activities:read"]
+    assert "may reach Workout Relay with GPS coordinates" in CONSENT_TEXT["en"]["activities:read"]
+    assert "remove coordinates and route data" in CONSENT_TEXT["en"]["activities:read"]
     assert "fréquence cardiaque" in CONSENT_TEXT["fr"]["activities:read"]
+    assert "coordonnées GPS" in CONSENT_TEXT["fr"]["activities:read"]
+    assert "supprimer les coordonnées et le tracé" in CONSENT_TEXT["fr"]["activities:read"]
 
 
 @pytest.mark.anyio

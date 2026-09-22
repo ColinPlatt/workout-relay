@@ -244,7 +244,7 @@
               <input id="connector-url" readonly aria-label="Connector address" data-i18n-aria="connectorAddress">
               <button id="copy-connector" class="button primary" type="button" data-i18n="copyAddress">Copy address</button>
             </div>
-            <p class="muted" data-i18n="connectApprove">Approve activity access to share completed workouts and health/run metrics, without GPS. Existing connections need fresh consent: remove and re-add the connector, then approve activities:read.</p>
+            <p class="muted" data-i18n="connectApprove">For activity access, Garmin may send GPS coordinates to Workout Relay. Workout Relay removes coordinates and route data on its server before delivering the remaining metrics to your assistant.</p>
             </details>
             <h3 class="connector-heading" data-i18n="connectedAssistants">Connected assistants</h3>
             <div id="connection-list" class="key-list"></div>
@@ -257,7 +257,7 @@
               <input id="key-name" maxlength="80" data-i18n-placeholder="keyNamePlaceholder" aria-label="API key name" data-i18n-aria="apiKeyName">
               <button id="create-key" class="button primary" type="button" data-i18n="createKey">Create key</button>
             </div>
-            <label class="consent"><input id="key-activities" type="checkbox"> <span data-i18n="activityKeyConsent">Also allow completed activities and health/run metrics (including heart rate, without GPS). Leave unchecked for plan-only access.</span></label>
+            <label class="consent"><input id="key-activities" type="checkbox"> <span data-i18n="activityKeyConsent">Also allow completed activities and health/run metrics. Garmin may send GPS coordinates to Workout Relay; its server removes them before returning the filtered metrics through this key.</span></label>
             <div id="key-result" class="secret-result hidden"></div>
             <div id="key-list" class="key-list"></div>
             <a href="/docs" target="_blank" class="text-link" data-i18n="openApiDocs">Open interactive API documentation ↗</a>
@@ -400,7 +400,7 @@
       <li data-i18n="privacyKeptPlans">Plans you send and their results, deleted automatically after the retention period. Clear history under Plans removes them sooner.</li>
       <li data-i18n="privacyKeptGarmin">Encrypted Garmin session tokens — only if you chose "Keep Garmin connected".</li>
       <li data-i18n="privacyKeptAssistants">Which assistants you connected, and when they last acted.</li>
-      <li data-i18n="privacyKeptActivityIds">If you granted activity access: the IDs of activities shown to an assistant, with your Garmin account name, kept briefly so it can only fetch what it was shown. The measurements themselves are passed straight through and never stored.</li>
+      <li data-i18n="privacyKeptActivityIds">If you grant activity access, Garmin may send GPS coordinates to Workout Relay. The server removes coordinates and route data before delivering filtered metrics to the AI. The application database does not store the activity response, measurements or coordinates; it stores the activity ID and Garmin account reference used to restrict later detail requests.</li>
       <li data-i18n="privacyKeptSessions">A hashed record of each signed-in browser session, and your language choice.</li>
     </ul>
     <h3 data-i18n="privacyNeverTitle">Never kept</h3>

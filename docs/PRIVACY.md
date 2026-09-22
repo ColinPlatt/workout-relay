@@ -57,14 +57,20 @@ could drift from it.
 Reading completed activities requires a separate `activities:read` permission
 you grant explicitly when connecting an assistant.
 
-The measurements themselves — heart rate, pace, distance and the rest — are
-fetched from Garmin on request, passed to the assistant, and not stored here.
+Garmin may include GPS coordinates in the JSON activity responses sent to
+Workout Relay. The server processes those responses in memory and uses an
+allowlist to remove coordinates and route data before delivering the remaining
+metrics — heart rate, pace, distance and the rest — to the assistant. This path
+does not request or receive a FIT or TCX file. The application database does not
+store the activity response, measurements or coordinates. Activity names and
+times are delivered to the assistant and may reveal location indirectly.
 
 What *is* stored: the **IDs** of the activities shown to an assistant, together
-with your Garmin account name and a timestamp, for 24 hours. That record is
-what confines an assistant to activities it was actually shown in your own
-listing, instead of letting it ask for arbitrary IDs. It holds no measurements.
-It is deleted when it ages out, when you disconnect Garmin, or with the account.
+with your Garmin account name and a timestamp. That record is what confines an
+assistant to activities it was actually shown in your own listing, instead of
+letting it ask for arbitrary IDs. It holds no measurements and can authorize a
+detail request for 24 hours. The record is deleted when you disconnect Garmin
+or delete the account.
 
 ### Clearing plan history
 
@@ -118,12 +124,20 @@ sont jamais conservés. Pour changer de choix, déconnectez puis reconnectez.
 
 ### Données d'activité
 
-Les mesures (fréquence cardiaque, allure, distance) sont récupérées auprès de
-Garmin à la demande, transmises à l'assistant, et ne sont pas conservées ici.
-Sont en revanche conservés 24 heures : les identifiants des activités montrées
-à un assistant, le nom de votre compte Garmin et un horodatage. Ce registre
-limite l'assistant aux activités qui lui ont été présentées ; il ne contient
-aucune mesure.
+Garmin peut inclure des coordonnées GPS dans les réponses JSON d'activité
+envoyées à Workout Relay. Le serveur traite ces réponses en mémoire et utilise
+une liste de champs autorisés pour supprimer les coordonnées et le tracé avant
+de transmettre à l'assistant les autres mesures (fréquence cardiaque, allure,
+distance, etc.). Aucun fichier FIT ou TCX n'est demandé ni reçu par ce parcours.
+La base de données de l'application ne conserve ni la réponse d'activité, ni les
+mesures, ni les coordonnées. Le nom et l'heure de l'activité sont transmis et
+peuvent révéler indirectement un lieu.
+
+Sont en revanche conservés : les identifiants des activités montrées à un
+assistant, le nom de votre compte Garmin et un horodatage. Ce registre limite
+l'assistant aux activités qui lui ont été présentées ; il ne contient aucune
+mesure et peut autoriser l'accès au détail pendant 24 heures. Il est supprimé
+à la déconnexion de Garmin ou avec le compte.
 
 « Effacer l'historique » supprime à tout moment vos envois terminés, sans
 attendre la période de conservation. Les durées exactes sont indiquées dans la
