@@ -8,15 +8,24 @@ in this account's own listing.
 
 from __future__ import annotations
 
+import logging
 import math
 import re
 from datetime import timedelta
 
-from sqlalchemy import update
+from sqlalchemy import delete, update
 
 from .database import ActivityAccess, GarminConnection, now, _as_utc
 from .garmin import GarminError
 from .rate_limit import RateLimiter
+
+# The upstream client includes response-derived error text in its exception
+# logs. Activity responses may contain health or location data, so this adapter
+# owns the safe error reporting and silences both upstream logger names.
+for _logger_name in ("garminconnect", "garminconnect.client"):
+    logging.getLogger(_logger_name).setLevel(logging.CRITICAL + 1)
+
+ACTIVITY_ACCESS_TTL = timedelta(hours=1)
 
 
 class ActivityError(RuntimeError):
@@ -97,6 +106,18 @@ DEFAULT_SERIES_SAMPLES = 300
 
 def _number(value):
     return value if type(value) in (int, float) and math.isfinite(value) else None
+
+
+def purge_expired_activity_access(database) -> int:
+    """Delete expired ID authorizations; activity measurements are never stored."""
+    with database.session() as db:
+        result = db.execute(
+            delete(ActivityAccess).where(
+                ActivityAccess.observed_at <= now() - ACTIVITY_ACCESS_TTL
+            )
+        )
+        db.commit()
+        return result.rowcount or 0
 
 
 def series_json(data: dict, requested: int) -> dict:
@@ -244,7 +265,7 @@ class ActivityService:
                                   "next_start": start + len(items) if len(items) == limit else None}
                     else:
                         access = db.get(ActivityAccess, (user_id, activity_id))
-                        if access is None or access.garmin_account != account or _as_utc(access.observed_at) < now() - timedelta(days=1):
+                        if access is None or access.garmin_account != account or _as_utc(access.observed_at) <= now() - ACTIVITY_ACCESS_TTL:
                             raise ActivityError("activity_not_found", 404)
                         raw = session.get_activity(activity_id)
                         if not isinstance(raw, dict):

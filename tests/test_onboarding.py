@@ -167,7 +167,7 @@ async def test_the_notice_quotes_the_configured_periods(onboarding_settings):
             assert policy["plan_retention_days"] == 42
             assert policy["session_days"] == 7
             assert policy["garmin_visit_minutes"] == settings.garmin_visit_minutes
-            assert policy["activity_id_retention_hours"] == 24
+            assert policy["activity_id_retention_hours"] == 1
 
             script = (await client.get("/static/app.js")).text
             assert "privacyPeriods" in script

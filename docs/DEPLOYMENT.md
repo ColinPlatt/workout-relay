@@ -148,7 +148,7 @@ session has expired.
 
 Startup creates the additive `activity_access` table. Only observed activity
 IDs, account bindings and timestamps are stored, not metric responses. Detail
-reads require an ID observed in this user's listing within 24 hours. Reads are
+reads require an ID observed in this user's listing within one hour. Reads are
 bounded to 50 activities per page and 20 calls per user/minute in-process;
 configure shared ingress limits if scaling. Activity reads share the upload
 ownership lock to protect refreshed Garmin tokens; `garmin_busy` means retry

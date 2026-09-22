@@ -256,7 +256,7 @@ def build_connector(
         "Set samples to the number of points wanted, up to 1000; omit it for "
         "summary and laps only, which is much smaller. Requires "
         "activities:read and an id from this account's list_activities within "
-        "the last 24 hours. Missing metrics are null, never zero. Location is "
+        "the last hour. Missing metrics are null, never zero. Location is "
         "never included and no files are served."
     ))
     async def get_activity(activity_id: str, samples: int | None = None, laps: bool = True) -> str:

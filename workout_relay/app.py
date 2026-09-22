@@ -27,7 +27,12 @@ from sqlalchemy.orm import Session
 
 from .config import Settings
 from .pages import LANGUAGE_COOKIE, about_html, language_links, page_language
-from .activities import ActivityError, ActivityService
+from .activities import (
+    ACTIVITY_ACCESS_TTL,
+    ActivityError,
+    ActivityService,
+    purge_expired_activity_access,
+)
 from .database import (
     ApiKey,
     BrowserSession,
@@ -177,8 +182,12 @@ def create_app(
                 )
             )
             recovery_db.commit()
+        purge_expired_activity_access(database)
         worker = asyncio.create_task(
             upload_worker(database, tokens_store, gateway, upload_locks, queue_event, worker_stop)
+        )
+        activity_cleanup = asyncio.create_task(
+            activity_access_cleanup_worker(database, worker_stop)
         )
         try:
             async with AsyncExitStack() as transports:
@@ -200,6 +209,7 @@ def create_app(
             await drain(worker, SHUTDOWN_DRAIN_SECONDS)
             if not worker.done():
                 logger.warning("upload worker still active at the shutdown deadline")
+            await drain(activity_cleanup, 5)
 
     app = FastAPI(
         title="Workout Relay API",
@@ -513,7 +523,7 @@ def create_app(
             "plan_retention_days": settings.plan_retention_days,
             "session_days": settings.session_days,
             "garmin_visit_minutes": settings.garmin_visit_minutes,
-            "activity_id_retention_hours": 24,
+            "activity_id_retention_hours": int(ACTIVITY_ACCESS_TTL.total_seconds() / 3600),
         }
 
     @app.get("/api/v1/plan-schema", tags=["plan format"])
@@ -1320,6 +1330,19 @@ async def drain(task: asyncio.Task, timeout: float | None = None):
 async def drain_thread(function, *args, **kwargs):
     """Keep ownership until an already-started thread actually exits."""
     return await drain(asyncio.create_task(asyncio.to_thread(function, *args, **kwargs)))
+
+
+async def activity_access_cleanup_worker(database: Database, stop: asyncio.Event) -> None:
+    """Remove expired activity-ID authorizations even when the site is idle."""
+    while not stop.is_set():
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=60)
+        except TimeoutError:
+            try:
+                await asyncio.to_thread(purge_expired_activity_access, database)
+            except Exception:
+                # Do not attach upstream or database exception text to logs.
+                logger.warning("expired activity authorization cleanup failed")
 
 
 def api_error(status: int, code: str) -> HTTPException:

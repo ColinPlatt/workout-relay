@@ -9,10 +9,11 @@ Workout Relay uses Garmin's unofficial Connect endpoints. This is a
 
 Detailed reads return lap splits and, on request, the sample series behind
 Garmin's own charts. Garmin is asked for it with `maxPolylineSize=0`, so the
-route is not fetched at all, and both shapes are built from an allowlist of
-named metrics: a key Garmin adds later, or a positional one such as
-`directLatitude`, is dropped rather than forwarded. Nothing is stored; only
-the activity IDs already shown to the assistant are kept, for 24 hours.
+route is not requested, and both shapes are built from an allowlist of named
+metrics: a key Garmin adds later, or a positional one such as `directLatitude`,
+is dropped rather than forwarded. Activity responses and measurements are not
+stored; only the activity IDs already shown to the assistant are kept. Detail
+authorization expires after one hour and an automatic cleanup removes the row.
 
 ### Where Garmin tokens live
 
@@ -29,9 +30,10 @@ they were made under. [docs/PRIVACY.md](PRIVACY.md) is the user-facing notice.
 - Workout Relay account email and a salted Argon2id password hash.
 - Submitted workout plans and redacted upload results.
 - Activity IDs observed in the user's own listing, Garmin account binding and
-  observation time, to restrict detail access. Authorization expires after 24
-  hours; these records are removed when Garmin is disconnected or the account
-  is deleted. No completed-activity metric responses are persisted.
+  observation time, to restrict detail access. Authorization expires after one
+  hour; automatic cleanup removes expired rows, and disconnecting Garmin or
+  deleting the account also removes them. No completed-activity metric responses
+  are persisted.
 - Hashed Workout Relay API keys. Full keys are displayed only once.
 - An authenticated-encryption ciphertext containing Garmin access and refresh
   tokens.
@@ -90,9 +92,10 @@ délégué.
 - E-mail du compte Workout Relay et empreinte Argon2id salée du mot de passe.
 - Plans d'entraînement et résultats d'import expurgés.
 - Identifiants des activités observées dans votre historique, compte Garmin
-  associé et date d'observation ; l'accès au détail expire après 24 heures.
-  Ces références sont supprimées à la déconnexion Garmin ou à la suppression
-  du compte. Les réponses contenant les mesures ne sont pas conservées.
+  associé et date d'observation ; l'accès au détail expire après une heure.
+  Un nettoyage automatique supprime les références expirées ; elles sont aussi
+  supprimées à la déconnexion Garmin ou à la suppression du compte. Les réponses
+  contenant les mesures ne sont pas conservées.
 - Empreintes des clés API Workout Relay ; la clé complète n'est affichée qu'une
   seule fois.
 - Chiffrement authentifié des jetons d'accès et de renouvellement Garmin.

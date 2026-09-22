@@ -69,8 +69,8 @@ What *is* stored: the **IDs** of the activities shown to an assistant, together
 with your Garmin account name and a timestamp. That record is what confines an
 assistant to activities it was actually shown in your own listing, instead of
 letting it ask for arbitrary IDs. It holds no measurements and can authorize a
-detail request for 24 hours. The record is deleted when you disconnect Garmin
-or delete the account.
+detail request for one hour. An automatic cleanup removes expired records; they
+are also deleted when you disconnect Garmin or delete the account.
 
 ### Clearing plan history
 
@@ -136,7 +136,8 @@ peuvent révéler indirectement un lieu.
 Sont en revanche conservés : les identifiants des activités montrées à un
 assistant, le nom de votre compte Garmin et un horodatage. Ce registre limite
 l'assistant aux activités qui lui ont été présentées ; il ne contient aucune
-mesure et peut autoriser l'accès au détail pendant 24 heures. Il est supprimé
+mesure et peut autoriser l'accès au détail pendant une heure. Un nettoyage
+automatique supprime les enregistrements expirés ; ils sont également supprimés
 à la déconnexion de Garmin ou avec le compte.
 
 « Effacer l'historique » supprime à tout moment vos envois terminés, sans

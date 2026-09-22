@@ -4,7 +4,11 @@ from datetime import timedelta
 import pytest
 from sqlalchemy import select
 
-from workout_relay.activities import ActivityError, activity_json
+from workout_relay.activities import (
+    ActivityError,
+    activity_json,
+    purge_expired_activity_access,
+)
 from workout_relay.app import CONSENT_TEXT, create_app
 from workout_relay.database import ActivityAccess, GarminConnection, now
 from workout_relay.garmin import GarminError, LiveGarminSession, MockGarminSession
@@ -98,9 +102,12 @@ async def test_activity_ids_are_account_bound_expire_and_disconnect_cascades(con
             assert (await first.get("/api/v1/activities/999999")).status_code == 404
             with app.state.database.session() as db:
                 access = db.scalar(select(ActivityAccess))
-                access.observed_at = now() - timedelta(days=2)
+                access.observed_at = now() - timedelta(hours=2)
                 db.commit()
             assert (await first.get(f"/api/v1/activities/{item['id']}")).status_code == 404
+            assert purge_expired_activity_access(app.state.database) == 1
+            with app.state.database.session() as db:
+                assert db.scalar(select(ActivityAccess)) is None
             await first.get("/api/v1/activities")
             with app.state.database.session() as db:
                 connection = db.scalar(select(GarminConnection).where(GarminConnection.user_id == access.user_id))
@@ -189,6 +196,20 @@ def test_live_adapter_uses_bounded_client_methods_and_sanitizes_errors():
         session.get_activity("123")
     assert exc.value.code == "garmin_rate_limited"
     assert "private" not in str(exc.value)
+
+
+def test_upstream_activity_errors_cannot_write_response_content_to_logs(monkeypatch, caplog):
+    from garminconnect import Garmin, GarminConnectConnectionError
+
+    client = Garmin()
+
+    def failed(*_args, **_kwargs):
+        raise GarminConnectConnectionError("private GPS response")
+
+    monkeypatch.setattr(client.client, "_run_request", failed)
+    with pytest.raises(GarminError):
+        LiveGarminSession(client).get_activity("123")
+    assert "private GPS response" not in caplog.text
 
 
 @pytest.mark.anyio
