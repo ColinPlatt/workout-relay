@@ -29,7 +29,8 @@ from .activities import ActivityError, ActivityService
 from .database import Database, GarminConnection
 from .mcp_probe import allowed_hosts
 from .oauth import SCOPES, RelayOAuthProvider
-from .plans import assistant_instructions, example_plan, plan_schema
+from . import exercises
+from .plans import assistant_instructions, example_plan, plan_schema, plan_warnings
 from .submissions import (
     Accepted,
     PlanRejected,
@@ -97,9 +98,11 @@ def build_connector(
     server = FastMCP(
         name="Workout Relay",
         instructions=(
-            "Send structured running plans to the person's Garmin Connect "
-            "calendar. Fetch get_plan_format first: it carries the rules, the "
-            "JSON Schema and a worked example. Always validate_plan before "
+            "Send structured running and strength plans to the person's "
+            "Garmin Connect calendar. Fetch get_plan_format first: it carries "
+            "the rules, the JSON Schema and a worked example. For a strength "
+            "session, look every movement up with find_exercises and never "
+            "invent an exercise name. Always validate_plan before "
             "submit_plan, and repair every reported error. submit_plan queues "
             "the work and returns immediately; poll get_plan_status until it "
             "is completed or failed. Reuse a workout's id to edit or move it; "
@@ -164,7 +167,28 @@ def build_connector(
             check_plan(plan, settings.max_plan_bytes)
         except PlanRejected as rejected:
             return _error(rejected.code, errors=rejected.errors)
-        return _ok({"plan_id": plan["plan_id"], "workout_count": len(plan["workouts"])})
+        return _ok({
+            "plan_id": plan["plan_id"],
+            "workout_count": len(plan["workouts"]),
+            # Not errors: the plan submits as it stands, but a warning names a
+            # shortcut worth going back to the person about.
+            "warnings": plan_warnings(plan),
+        })
+
+    @server.tool(description=(
+        "Search Garmin's strength exercise catalogue: 1,531 exercises in 47 "
+        "categories. Use this before naming any exercise in a strength plan, "
+        "and never invent a name. Query by movement (ROMANIAN_DEADLIFT), by "
+        "muscle (GLUTES) or by equipment, optionally narrowed to one category. "
+        "Returns each exercise with its category and whether it is bodyweight. "
+        "A plan gives the exercise name alone; the category is derived."
+    ))
+    def find_exercises(query: str = "", category: str = "", limit: int = 20) -> str:
+        _actor("plans:read")
+        found = exercises.search(query, category or None, max(1, min(limit, 50)))
+        if not found and not query and category:
+            return _error("unknown_category", categories=exercises.categories())
+        return _ok({"items": found, "categories": exercises.categories()})
 
     @server.tool(
         description=(

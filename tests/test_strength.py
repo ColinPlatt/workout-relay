@@ -325,3 +325,28 @@ def test_a_plan_may_write_the_name_naturally(written):
     payload = built([{"type": "interval", "exercise": written, "duration": REPS}])
     step = payload["workoutSegments"][0]["workoutSteps"][0]
     assert step["exerciseName"] == "ROMANIAN_DEADLIFT"
+
+
+# --- the search endpoint ---------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_the_catalogue_can_be_searched_over_http(settings):
+    """The docs point assistants here, so the endpoint has to exist and
+    answer the question the docs say it answers."""
+    import httpx
+    from workout_relay.app import create_app
+
+    app = create_app(settings)
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            found = (await client.get("/api/v1/exercises", params={"q": "romanian deadlift"})).json()
+            assert found["items"][0]["exercise"] == "ROMANIAN_DEADLIFT"
+            assert found["items"][0]["category"] == "DEADLIFT"
+            assert len(found["categories"]) == 47
+
+            narrowed = (await client.get(
+                "/api/v1/exercises", params={"category": "PLANK", "limit": 50}
+            )).json()
+            assert all(item["category"] == "PLANK" for item in narrowed["items"])

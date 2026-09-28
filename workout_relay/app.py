@@ -56,7 +56,8 @@ from .submissions import (
     recent_submissions,
     scheduled_workouts,
 )
-from .plans import assistant_instructions, example_plan, plan_schema, validate_plan
+from . import exercises
+from .plans import assistant_instructions, example_plan, plan_schema, plan_warnings, validate_plan
 from .rate_limit import RateLimiter
 from .retention import RETENTIONS, VISIT, GarminTokens
 from .security import TokenVault, hash_password, hash_token, opaque_token, verify_password
@@ -560,6 +561,15 @@ def create_app(
     async def example_endpoint():
         return example_plan()
 
+    @app.get("/api/v1/exercises", tags=["plan format"])
+    async def exercises_endpoint(q: str = "", category: str = "", limit: int = 20):
+        """Search the strength catalogue. Public, like the schema: it is
+        Garmin's published vocabulary, not anything about an account."""
+        return {
+            "items": exercises.search(q, category or None, max(1, min(limit, 50))),
+            "categories": exercises.categories(),
+        }
+
     @app.get("/api/v1/plan-format", tags=["plan format"])
     async def format_endpoint(language: str = "en"):
         return assistant_instructions("fr" if language == "fr" else "en", settings.base_url)
@@ -935,6 +945,8 @@ def create_app(
             "valid": True,
             "plan_id": plan["plan_id"],
             "workout_count": len(plan["workouts"]),
+            # Valid, but worth saying: a warning names a shortcut the plan took.
+            "warnings": plan_warnings(plan),
         }
 
     @app.post("/api/v1/plans", status_code=202, tags=["Plans"])

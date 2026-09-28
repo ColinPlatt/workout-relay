@@ -110,9 +110,16 @@ Two properties drive the schema design:
 - **Names are nearly, but not quite, unique.** 1,495 distinct names; only **26
   appear in more than one category** — `ROW` in five (`ROW`, `SLED`, `SANDBAG`,
   `SUSPENSION`, `BANDED_EXERCISES`), `CURL` and `LUNGE` in four, `PLANK` and
-  `SQUAT` in three. So a plan names the exercise alone and we derive the
-  category; `category` is required only to disambiguate those 26, and validation
-  names the candidates when it is missing.
+  `SQUAT` in three. A plan names the exercise alone and we derive the category.
+  Two rules settle 24 of the 26, in `exercises.py`: a category bearing the
+  exercise's own name is that movement's home (`PLANK` in `PLANK`), which is
+  exact equality rather than inference; failing that, if exactly one candidate
+  category is not equipment, the bare name means the plain version, so
+  `SIDE_PLANK` is the ordinary one and not the suspension-trainer variant.
+  Which categories count as equipment is *our* judgement — Garmin does not
+  label them — and naming one still reaches the variant. Only `CHEST_PRESS`
+  and `GLUTE_BRIDGE` are left, since both exist solely as equipment movements;
+  those two require a `category`, and the refusal names the candidates.
 - **30 categories contain an exercise with the category's own name** (`PLANK`
   under `PLANK`, and so on). That is a real specific exercise, distinct from the
   generic `exerciseName: ""` form above — the observed workout used both.

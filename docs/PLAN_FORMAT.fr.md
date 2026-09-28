@@ -70,6 +70,90 @@ Validez toujours le JSON généré avant de le soumettre. Chaque erreur contient
 code stable, un chemin JSON et des paramètres afin qu'un assistant puisse
 corriger le plan.
 
+## Séances de musculation
+
+Mettez `sport` à `strength`. Les champs de la séance sont identiques ; seules
+les étapes changent. Les types d'étape sont `warmup`, `interval`, `cooldown` et
+`rest`, les durées sont en `reps` ou en `time`, et il n'y a ni cible d'allure ni
+cible cardiaque.
+
+```json
+{
+  "id": "semaine40-bas",
+  "date": "2026-10-02",
+  "sport": "strength",
+  "title": "Bas du corps",
+  "steps": [
+    {
+      "type": "warmup",
+      "exercise": "PLANK",
+      "duration": { "type": "time", "value": 60 }
+    },
+    {
+      "type": "repeat",
+      "count": 3,
+      "steps": [
+        {
+          "type": "interval",
+          "exercise": "ROMANIAN_DEADLIFT",
+          "duration": { "type": "reps", "value": 10 },
+          "weight_kg": 8,
+          "description": "Charnière de hanche, genoux souples."
+        },
+        { "type": "rest", "duration": { "type": "time", "value": 60 } }
+      ]
+    }
+  ]
+}
+```
+
+Les séries s'expriment par un `repeat` contenant l'exercice puis une étape
+`rest` ; ici une répétition accepte jusqu'à 12 étapes. `weight_kg` est en
+kilogrammes. Une étape `rest` ne nomme aucun exercice, ne porte aucune charge et
+doit être mesurée en temps.
+
+### Nommer un exercice
+
+`exercise` doit être un nom connu de Garmin : il y en a 1 531 répartis en 47
+catégories. Cherchez-le avec l'outil `find_exercises` ou via
+`GET /api/v1/exercises` ; ne l'inventez jamais.
+
+La catégorie est déduite, le plan ne l'indique donc pas. C'est volontaire : elle
+ne se devine pas à partir du nom (`KETTLEBELL_SWING` est classé sous
+`HIP_RAISE`, `DEAD_BUG` sous `HIP_STABILITY`), et c'est précisément cette
+supposition qui classait les exercices au mauvais endroit.
+
+N'indiquez `category` que dans deux cas :
+
+- Pour choisir une variante avec matériel. `SIDE_PLANK` seul désigne la version
+  ordinaire ; `"category": "SUSPENSION"` demande la version en sangles.
+- Lorsque la validation signale un nom ambigu. Seuls `CHEST_PRESS` et
+  `GLUTE_BRIDGE` le sont, et l'erreur énumère les catégories possibles.
+
+Les noms peuvent s'écrire naturellement : `romanian deadlift` comme
+`Romanian-Deadlift` aboutissent à `ROMANIAN_DEADLIFT`. Un nom inconnu est refusé
+avec les exercices réels les plus proches et leur catégorie ; reprenez l'un
+d'eux plutôt que d'inventer un autre nom.
+
+### Quand rien ne convient
+
+Garmin autorise aussi une étape qui ne nomme qu'une catégorie, affichée telle
+quelle sur la montre. Elle est acceptée ici, mais elle en dit moins à la
+personne qu'un mouvement nommé : elle exige donc un champ `reason` écrit et
+aucun `exercise` :
+
+```json
+{
+  "type": "interval",
+  "category": "CARRY",
+  "reason": "Port valise avec une seule kettlebell ; aucun port listé ne correspond",
+  "duration": { "type": "time", "value": 40 }
+}
+```
+
+Le plan est alors validé avec un **avertissement** plutôt qu'une erreur, en
+citant les exercices précis qui ont été écartés. Demandez d'abord à la personne.
+
 ## Flux API pour un assistant
 
 Utilisez `Authorization: Bearer <clé API Workout Relay>` sur chaque endpoint

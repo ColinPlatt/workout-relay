@@ -196,12 +196,16 @@ def assistant_instructions(language: str = "en", base_url: str = "") -> dict:
             "N'ajoutez ni Markdown, ni commentaire, ni champ inconnu."
         )
         rules = [
-            "Utilisez schema_version 1 et sport running.",
+            "Utilisez schema_version 1. sport vaut running ou strength.",
             "Chaque id de séance est stable et unique pour ce compte : 2 à 160 caractères minuscules, chiffres, _ ou -, commençant par une lettre ou un chiffre. Conservez cet id si la date change.",
             "Les durées time sont en secondes et distance en mètres.",
             "Une cible d'allure utilise slow et fast au format M:SS par kilomètre; slow doit être plus lent.",
             "Une cible cardiaque utilise low et high en bpm avec low strictement inférieur à high.",
             "Après expansion des répétitions, un entraînement ne peut pas dépasser 50 étapes.",
+            "Musculation : chaque étape nomme un exercice Garmin dans exercise (ex. ROMANIAN_DEADLIFT). Cherchez-le avec find_exercises ; ne l'inventez jamais. La catégorie est déduite ; ne l'indiquez que si le refus le demande.",
+            "Musculation : duration vaut reps ou time, weight_kg est en kilogrammes, et les séries s'expriment par un repeat contenant l'exercice puis une étape rest.",
+            "Musculation : si vraiment aucun exercice ne convient, indiquez category seule avec un champ reason expliquant pourquoi. Demandez d'abord à la personne : la séance sera moins précise sur la montre.",
+            "Un refus propose des exercices proches : reprenez-en un plutôt que d'inventer un autre nom.",
             "Validez le JSON avec l'endpoint de validation avant de le soumettre.",
             "Une soumission valide renvoie HTTP 202. Interrogez ensuite son URL de statut jusqu'à completed ou failed.",
         ]
@@ -211,12 +215,16 @@ def assistant_instructions(language: str = "en", base_url: str = "") -> dict:
             "Do not add Markdown, comments, or unknown fields."
         )
         rules = [
-            "Use schema_version 1 and sport running.",
+            "Use schema_version 1. sport is running or strength.",
             "Each workout id is stable and unique for this account: 2–160 lowercase letters, digits, _ or -, starting with a letter or digit. Keep the same id when changing its date.",
             "time durations are seconds and distance durations are metres.",
             "Pace targets use slow and fast in M:SS per kilometre; slow must be the slower pace.",
             "Heart-rate targets use low and high bpm with low strictly below high.",
             "A workout may have no more than 50 steps after repeat expansion.",
+            "Strength: each step names a Garmin exercise in exercise (e.g. ROMANIAN_DEADLIFT). Look it up with find_exercises; never invent one. The category is derived, so give category only when a refusal asks for it.",
+            "Strength: duration is reps or time, weight_kg is kilograms, and sets are a repeat containing the exercise followed by a rest step.",
+            "Strength: if genuinely nothing fits, give category alone plus a reason saying why. Ask the person first, because the session shows less on the watch.",
+            "A refusal lists close exercises; take one of those rather than inventing another name.",
             "Validate the JSON with the validation endpoint before submitting it.",
             "A valid submission returns HTTP 202. Poll its status URL until it is completed or failed.",
         ]
@@ -231,8 +239,9 @@ def assistant_instructions(language: str = "en", base_url: str = "") -> dict:
             "preferred": (
                 "When connected through this MCP connector, call its tools "
                 "instead of raw HTTP: get_plan_format, validate_plan_tool, "
-                "submit_plan, get_plan_status, list_recent_plans and "
-                "get_garmin_status. They act for the account that approved "
+                "submit_plan, get_plan_status, list_recent_plans, "
+                "find_exercises and get_garmin_status. They act for the "
+                "account that approved "
                 "the connection, so no key is needed."
             ),
             "setup": [

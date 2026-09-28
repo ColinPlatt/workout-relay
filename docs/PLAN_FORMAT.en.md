@@ -87,6 +87,87 @@ more than 50 steps after all repeats are expanded.
 Always validate generated JSON before submission. Validation errors include a
 stable code, JSON path, and parameters so an assistant can repair the plan.
 
+## Strength workouts
+
+Set `sport` to `strength`. The workout fields are the same; only the steps
+differ. Step types are `warmup`, `interval`, `cooldown` and `rest`, durations
+are `reps` or `time`, and there are no pace or heart-rate targets.
+
+```json
+{
+  "id": "week40-lower",
+  "date": "2026-10-02",
+  "sport": "strength",
+  "title": "Lower body",
+  "steps": [
+    {
+      "type": "warmup",
+      "exercise": "PLANK",
+      "duration": { "type": "time", "value": 60 }
+    },
+    {
+      "type": "repeat",
+      "count": 3,
+      "steps": [
+        {
+          "type": "interval",
+          "exercise": "ROMANIAN_DEADLIFT",
+          "duration": { "type": "reps", "value": 10 },
+          "weight_kg": 8,
+          "description": "Hinge at the hip, soft knees."
+        },
+        { "type": "rest", "duration": { "type": "time", "value": 60 } }
+      ]
+    }
+  ]
+}
+```
+
+Sets are a `repeat` containing the exercise followed by a `rest` step, and a
+repeat may hold up to 12 steps here. `weight_kg` is kilograms. A `rest` step
+names no exercise, carries no weight and must be timed.
+
+### Naming an exercise
+
+`exercise` must be a name Garmin knows — there are 1,531 of them in 47
+categories. Search with the `find_exercises` tool, or `GET /api/v1/exercises`;
+never invent a name.
+
+The category is derived, so a plan does not give one. That is deliberate: the
+category cannot be guessed from the name (`KETTLEBELL_SWING` is filed under
+`HIP_RAISE`, `DEAD_BUG` under `HIP_STABILITY`), and guessing it is what
+previously filed exercises wrongly.
+
+Give `category` in two cases only:
+
+- To pick an equipment variant. A bare `SIDE_PLANK` means the ordinary one;
+  `"category": "SUSPENSION"` asks for the suspension-trainer version.
+- When validation says a name is ambiguous. Only `CHEST_PRESS` and
+  `GLUTE_BRIDGE` are, and the error lists the categories to choose from.
+
+Names may be written naturally: `romanian deadlift` and `Romanian-Deadlift`
+both reach `ROMANIAN_DEADLIFT`. An unrecognised name is refused with the
+closest real exercises and their categories, which should be used rather than
+another invented name.
+
+### When nothing fits
+
+Garmin also allows a step that names only a category, which the watch shows as
+the category itself. It is accepted here, but it tells the person less than a
+named movement, so it needs a written `reason` and no `exercise`:
+
+```json
+{
+  "type": "interval",
+  "category": "CARRY",
+  "reason": "Suitcase carry with one kettlebell; no listed carry matches",
+  "duration": { "type": "time", "value": 40 }
+}
+```
+
+The plan then validates with a **warning** rather than an error, naming the
+specific exercises it passed over. Ask the person before using it.
+
 ## Assistant API workflow
 
 Use `Authorization: Bearer <Workout Relay API key>` on every private endpoint.

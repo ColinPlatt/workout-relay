@@ -766,3 +766,99 @@ async def test_an_api_key_can_never_be_given_permission_to_delete(connector_sett
             )
             assert blocked.status_code == 403
             assert blocked.json()["detail"]["code"] == "scope_required"
+
+
+@pytest.mark.anyio
+async def test_exercises_can_be_searched_rather_than_memorised(connector_settings):
+    """1,531 exercises will not fit in a prompt, and an assistant that cannot
+    look one up invents names instead — which is how they were filed wrongly."""
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            csrf = await register_account(client)
+            await connect_garmin(client, csrf)
+            _, tokens = await granted_token(client, csrf)
+
+            found = await call_tool(
+                client, tokens["access_token"], "find_exercises",
+                {"query": "romanian deadlift"},
+            )
+            body = json.loads(found.json()["result"]["content"][0]["text"])
+            assert body["ok"] is True
+            top = body["items"][0]
+            # The category comes back with it, because that is the part nobody
+            # can guess: ROMANIAN_DEADLIFT lives under DEADLIFT.
+            assert top["exercise"] == "ROMANIAN_DEADLIFT"
+            assert top["category"] == "DEADLIFT"
+
+            narrowed = await call_tool(
+                client, tokens["access_token"], "find_exercises",
+                {"query": "", "category": "PLANK", "limit": 50},
+            )
+            items = json.loads(narrowed.json()["result"]["content"][0]["text"])["items"]
+            assert items and all(item["category"] == "PLANK" for item in items)
+
+
+@pytest.mark.anyio
+async def test_a_strength_plan_travels_through_the_connector(connector_settings):
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            csrf = await register_account(client)
+            await connect_garmin(client, csrf)
+            _, tokens = await granted_token(client, csrf)
+            plan = {
+                "schema_version": 1, "plan_id": "strength-week", "title": "Strength week",
+                "workouts": [{
+                    "id": "s1", "date": "2099-01-05", "sport": "strength",
+                    "title": "Lower body", "steps": [
+                        {"type": "warmup", "exercise": "PLANK",
+                         "duration": {"type": "time", "value": 60}},
+                        {"type": "repeat", "count": 3, "steps": [
+                            {"type": "interval", "exercise": "ROMANIAN_DEADLIFT",
+                             "duration": {"type": "reps", "value": 10}, "weight_kg": 8},
+                            {"type": "rest", "duration": {"type": "time", "value": 60}},
+                        ]},
+                    ],
+                }],
+            }
+            checked = await call_tool(
+                client, tokens["access_token"], "validate_plan_tool", {"plan": plan}
+            )
+            body = json.loads(checked.json()["result"]["content"][0]["text"])
+            assert body["ok"] is True and body["warnings"] == []
+
+            submitted = await call_tool(
+                client, tokens["access_token"], "submit_plan", {"plan": plan}
+            )
+            assert json.loads(submitted.json()["result"]["content"][0]["text"])["ok"] is True
+
+
+@pytest.mark.anyio
+async def test_a_generic_exercise_submits_but_reports_a_warning(connector_settings):
+    """Allowed, because Garmin itself expresses it, but the assistant is told
+    so it can say what the session gave up."""
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            csrf = await register_account(client)
+            await connect_garmin(client, csrf)
+            _, tokens = await granted_token(client, csrf)
+            plan = {
+                "schema_version": 1, "plan_id": "carry-day", "title": "Carry day",
+                "workouts": [{
+                    "id": "c1", "date": "2099-01-06", "sport": "strength",
+                    "title": "Carries", "steps": [
+                        {"type": "interval", "category": "CARRY",
+                         "reason": "Suitcase carry with one kettlebell; nothing listed matches",
+                         "duration": {"type": "time", "value": 40}},
+                    ],
+                }],
+            }
+            checked = await call_tool(
+                client, tokens["access_token"], "validate_plan_tool", {"plan": plan}
+            )
+            body = json.loads(checked.json()["result"]["content"][0]["text"])
+            assert body["ok"] is True
+            assert body["warnings"][0]["code"] == "generic_exercise_used"
+            assert "FARMERS_CARRY" in body["warnings"][0]["params"]["examples"]
