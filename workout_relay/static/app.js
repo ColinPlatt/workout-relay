@@ -40,6 +40,17 @@ const translations = {
     assistantThreeTitle: "Sign in here and approve",
     assistantThreeBody: "Your assistant sends you back here to sign in once and approve. It never sees your Garmin or Workout Relay password.",
     connectedBadge: "Connected", clearHistory: "Clear history",
+    unknown_exercise: "{path}: Garmin has no exercise called {exercise}. Closest matches: {suggestions}",
+    ambiguous_exercise: "{path}: {exercise} exists in several categories ({categories}). Add a category to say which.",
+    wrong_category: "{path}: {exercise} is not in {category}. It belongs to: {categories}",
+    unknown_category: "{path}: Garmin has no exercise category called {category}.",
+    no_exercise_named: "{path}: name an exercise, or search the catalogue first.",
+    rest_names_an_exercise: "{path}: a rest step names no exercise.",
+    rest_carries_weight: "{path}: a rest step carries no weight.",
+    rest_must_be_timed: "{path}: a rest step is measured in seconds, not reps.",
+    weight_on_bodyweight_exercise: "{path}: {exercise} is a bodyweight exercise; remove the weight.",
+    generic_exercise_needs_reason: "{path}: naming only the category {category} shows less on the watch. Give a reason, or pick one of: {examples}",
+    generic_exercise_used: "{path}: this step shows as {category} on the watch rather than a named movement ({reason}). Specific options: {examples}",
     onGarmin: "On Garmin", scheduledWorkouts: "Scheduled workouts",
     scheduledHint: "Workouts sent from here. Deleting one removes it from your Garmin calendar and workout library.",
     noScheduled: "Nothing scheduled through Workout Relay yet.",
@@ -220,6 +231,17 @@ const translations = {
     assistantThreeTitle: "Connectez-vous ici et approuvez",
     assistantThreeBody: "Votre assistant vous renvoie ici pour vous connecter une fois et approuver. Il ne voit jamais vos mots de passe Garmin ou Workout Relay.",
     connectedBadge: "Connecté", clearHistory: "Effacer l'historique",
+    unknown_exercise: "{path} : Garmin ne connaît aucun exercice nommé {exercise}. Plus proches : {suggestions}",
+    ambiguous_exercise: "{path} : {exercise} existe dans plusieurs catégories ({categories}). Ajoutez une catégorie pour préciser.",
+    wrong_category: "{path} : {exercise} n'appartient pas à {category}, mais à : {categories}",
+    unknown_category: "{path} : Garmin ne connaît aucune catégorie nommée {category}.",
+    no_exercise_named: "{path} : nommez un exercice, ou cherchez d'abord dans le catalogue.",
+    rest_names_an_exercise: "{path} : une étape de repos ne nomme aucun exercice.",
+    rest_carries_weight: "{path} : une étape de repos ne porte aucune charge.",
+    rest_must_be_timed: "{path} : une étape de repos se mesure en secondes, pas en répétitions.",
+    weight_on_bodyweight_exercise: "{path} : {exercise} se fait au poids du corps ; retirez la charge.",
+    generic_exercise_needs_reason: "{path} : n'indiquer que la catégorie {category} affiche moins sur la montre. Donnez une raison, ou choisissez parmi : {examples}",
+    generic_exercise_used: "{path} : cette étape s'affiche comme {category} sur la montre plutôt qu'un mouvement nommé ({reason}). Options précises : {examples}",
     onGarmin: "Sur Garmin", scheduledWorkouts: "Séances programmées",
     scheduledHint: "Séances envoyées d'ici. En supprimer une la retire de votre calendrier et de votre bibliothèque Garmin.",
     noScheduled: "Aucune séance programmée via Workout Relay.",
@@ -537,11 +559,21 @@ function parsePlan() {
   if (candidate !== raw.trim()) { textarea.value = JSON.stringify(plan, null, 2); showToast(t("jsonCleaned")); }
   return plan;
 }
-function validationText(item) { return t(item.code, { path: item.path, ...(item.params || {}) }); }
+function validationText(item) {
+  const params = { path: item.path, ...(item.params || {}) };
+  // Exercise refusals carry lists; a message reads better than "[object Object]".
+  if (Array.isArray(params.suggestions)) params.suggestions = params.suggestions.map((s) => `${s.exercise} (${s.category})`).join(", ");
+  if (Array.isArray(params.categories)) params.categories = params.categories.join(", ");
+  if (Array.isArray(params.examples)) params.examples = params.examples.join(", ");
+  return t(item.code, params);
+}
 function showPlanResult(result, error = false) {
   const box = $("#plan-result"); box.classList.remove("hidden"); box.classList.toggle("error-result", error);
   if (result.validationErrors) {
     box.innerHTML = `<strong>${escapeHtml(t("validationFailed"))}</strong><ul class="validation-list">${result.validationErrors.map((item) => `<li>${escapeHtml(validationText(item))}</li>`).join("")}</ul>`;
+  } else if (result.warnings && result.warnings.length) {
+    // Valid, so this is not an error box: it says what the plan settled for.
+    box.innerHTML = `<strong>${escapeHtml(result.message)}</strong><ul class="validation-list">${result.warnings.map((item) => `<li>${escapeHtml(validationText(item))}</li>`).join("")}</ul>`;
   } else { box.textContent = result.message; }
 }
 
@@ -741,7 +773,7 @@ $("#load-example").addEventListener("click", async () => {
 $("#validate-plan").addEventListener("click", async (event) => {
   const button = event.currentTarget;
   setBusy(button, true);
-  try { const result = await api("/api/v1/plans/validate", { method: "POST", body: JSON.stringify(parsePlan()) }); showPlanResult({ message: t("validPlan", { count: result.workout_count }) }); }
+  try { const result = await api("/api/v1/plans/validate", { method: "POST", body: JSON.stringify(parsePlan()) }); showPlanResult({ message: t("validPlan", { count: result.workout_count }), warnings: result.warnings }); }
   catch (error) { showPlanResult(error.message === "invalid_json" ? { message: t("invalidJson", { detail: error.detail }) } : error.validationErrors ? error : { message: errorText(error) }, true); }
   finally { setBusy(button, false); }
 });

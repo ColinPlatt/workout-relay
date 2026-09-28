@@ -2,7 +2,10 @@
 
 Mobile-first, bilingual workout-plan delivery for Garmin Connect. Users connect
 their Garmin account once, then upload a strict JSON training plan from a phone
-or submit it through a revocable API key.
+or submit it through a revocable API key. Plans carry running sessions and
+strength sessions, the latter using Garmin's own exercise catalogue so each
+movement arrives named on the watch. Workouts sent from here can also be
+deleted again, under a permission separate from sending.
 
 > This project uses Garmin's undocumented Connect endpoints. It is not
 > affiliated with or endorsed by Garmin. Garmin passwords and MFA codes are
@@ -20,7 +23,9 @@ or submit it through a revocable API key.
    Tap **Send to Garmin**; validation runs before anything is uploaded. Use
    **Check plan** for an optional preview of any errors.
 4. The request is safely queued. The page may be closed; **Plan history** shows
-   whether it completed or failed when the user returns.
+   whether it completed or failed when the user returns. **Scheduled workouts**
+   lists what is on Garmin, with a delete button per row; deleting removes the
+   calendar entry and the workout itself, and asks for confirmation first.
 5. Under **Assistants**, expand **Connection details** to copy the connector
    address and approve access. For a manual chat, expand **Help my assistant
    create a plan** on the Plans screen and copy the instructions into the chat.
