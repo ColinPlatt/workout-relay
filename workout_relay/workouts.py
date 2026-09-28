@@ -76,6 +76,7 @@ _KILOGRAM = {"unitId": 8, "unitKey": "kilogram", "factor": 1000.0}
 
 def build_strength_workout(workout: dict) -> BaseWorkout:
     counter = Counter()
+    groups = Counter()
     return BaseWorkout(
         workoutName=workout["title"],
         sportType=_STRENGTH_SPORT,
@@ -87,22 +88,25 @@ def build_strength_workout(workout: dict) -> BaseWorkout:
                 segmentOrder=1,
                 sportType=_STRENGTH_SPORT,
                 workoutSteps=[
-                    _build_strength_step(step, counter) for step in workout["steps"]
+                    _build_strength_step(step, counter, groups) for step in workout["steps"]
                 ],
             )
         ],
     )
 
 
-def _build_strength_step(step: dict, counter: Counter):
+def _build_strength_step(step: dict, counter: Counter, groups: Counter):
     if step["type"] == "repeat":
         order = counter.next()
-        children = [_build_strength_step(child, counter) for child in step["steps"]]
-        for child_order, child in enumerate(children, 1):
-            child.stepOrder = child_order
-        return create_repeat_group(
+        child_id = groups.next()
+        children = [_build_strength_step(child, counter, groups) for child in step["steps"]]
+        for child in children:
+            child.childStepId = child_id
+        group = create_repeat_group(
             iterations=step["count"], workout_steps=children, step_order=order
         )
+        group.childStepId = child_id
+        return group
 
     type_id, type_key, display = _STRENGTH_STEP_TYPES[step["type"]]
     duration = step["duration"]

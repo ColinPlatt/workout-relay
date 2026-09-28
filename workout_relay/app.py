@@ -1159,6 +1159,7 @@ async def process_deletion(
     """
     results = []
     counts = {"deleted": 0, "already_gone": 0, "refused": 0}
+    original_tokens = connection.encrypted_tokens
     try:
         tokens = tokens_store.read(connection)
         garmin = None
@@ -1189,6 +1190,20 @@ async def process_deletion(
                     "code": "garmin_prior_upload_unresolved",
                 })
                 continue
+            # A repeatable update/reschedule may have committed newer remote
+            # identity than the link before it was interrupted. Explicit None
+            # for schedule_id means the old calendar entry was already removed.
+            workout_id = progress.get("workout_id") or link.garmin_workout_id
+            schedule_id = (
+                progress["schedule_id"]
+                if "schedule_id" in progress
+                else link.garmin_schedule_id
+            )
+            scheduled_date = (
+                progress["scheduled_date"]
+                if "scheduled_date" in progress
+                else link.scheduled_date
+            )
             if operation is None:
                 operation = WorkoutOperation(
                     user_id=user_id, workout_key=workout_key, content_hash=link.content_hash
@@ -1196,15 +1211,29 @@ async def process_deletion(
                 db.add(operation)
             operation.progress = json.dumps({
                 "stage": "deleting",
-                "workout_id": link.garmin_workout_id,
-                "schedule_id": link.garmin_schedule_id,
-                "scheduled_date": link.scheduled_date,
+                "workout_id": workout_id,
+                "schedule_id": schedule_id,
+                "scheduled_date": scheduled_date,
             })
             db.commit()
             if garmin is None:
                 garmin = await drain_thread(gateway.open_session, tokens)
+                refreshed = tokens_store.remember(
+                    connection, garmin.activity_tokens()
+                )
+                if refreshed is not None:
+                    changed = db.execute(update(GarminConnection).where(
+                        GarminConnection.user_id == user_id,
+                        GarminConnection.encrypted_tokens == original_tokens,
+                        GarminConnection.status == "connected",
+                    ).values(encrypted_tokens=refreshed))
+                    if changed.rowcount != 1:
+                        db.rollback()
+                        raise GarminError("garmin_connection_changed")
+                    connection.encrypted_tokens = refreshed
+                db.commit()
             outcome = await drain_thread(
-                garmin.remove, link.garmin_workout_id, link.garmin_schedule_id
+                garmin.remove, workout_id, schedule_id
             )
             assert_owned()
             db.delete(link)
@@ -1215,7 +1244,7 @@ async def process_deletion(
             results.append({
                 "id": workout_key,
                 "action": "already_gone" if gone else "deleted",
-                "garmin_workout_id": link.garmin_workout_id,
+                "garmin_workout_id": workout_id,
             })
             db.commit()
         submission.status = "completed"

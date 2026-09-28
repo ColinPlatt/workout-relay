@@ -132,3 +132,51 @@ test("a past workout is deleted with include_past, under its own warning", async
   assert.deepEqual(calls.posted[0], { workout_ids: ["old"], include_past: true });
   assert.equal(calls.confirmed.at(-1).key, "confirmDeletePast");
 });
+
+const pollDeletionSource = source.match(/async function pollDeletion\(jobId\) \{[\s\S]*?\n\}/)[0];
+
+async function runDeletionPoll(job) {
+  const notices = [];
+  const paths = [];
+  const context = {
+    api: async (path) => { paths.push(path); return job; },
+    t: (key, params = {}) => `${key}:${JSON.stringify(params)}`,
+    errorText: ({ code }) => `error:${code || "default"}`,
+    showToast: (message) => notices.push(message),
+    window: { setTimeout: (callback) => callback() },
+    Promise,
+  };
+  vm.runInNewContext(`${pollDeletionSource}\nglobalThis.__poll = pollDeletion;`, context);
+  await context.__poll("delete/job 1");
+  return { notices, paths };
+}
+
+test("deletion polling follows the exact accepted job", async () => {
+  const { notices, paths } = await runDeletionPoll({
+    status: "completed",
+    result: { counts: { deleted: 1, already_gone: 0, refused: 0 }, workouts: [] },
+  });
+  assert.deepEqual(paths, ["/api/v1/plans/delete%2Fjob%201"]);
+  assert.equal(notices.at(-1), "workoutDeleted:{}");
+});
+
+test("a refused deletion is never announced as deleted", async () => {
+  const { notices } = await runDeletionPoll({
+    status: "completed",
+    result: {
+      counts: { deleted: 0, already_gone: 0, refused: 1 },
+      workouts: [{ action: "refused", code: "garmin_prior_upload_unresolved" }],
+    },
+  });
+  assert.match(notices.at(-1), /^workoutDeletePartial:/);
+  assert.match(notices.at(-1), /error:garmin_prior_upload_unresolved/);
+  assert.ok(!notices.some((message) => message.startsWith("workoutDeleted:")));
+});
+
+test("an empty completed deletion is reported as an error", async () => {
+  const { notices } = await runDeletionPoll({
+    status: "completed",
+    result: { counts: { deleted: 0, already_gone: 0, refused: 0 }, workouts: [] },
+  });
+  assert.equal(notices.at(-1), "error:internal_delete_error");
+});

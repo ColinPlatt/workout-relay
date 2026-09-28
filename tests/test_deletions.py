@@ -248,6 +248,58 @@ async def test_deleting_removes_the_workout_and_every_row_that_tracked_it(worker
 
 
 @pytest.mark.anyio
+async def test_deletion_keeps_tokens_refreshed_while_opening_garmin(worker_settings):
+    database = Database(worker_settings.database_url)
+    vault = GarminTokens(
+        TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes
+    )
+    user_id = seed_links(database, vault, [("a", "2026-10-01")])
+    with database.session() as db:
+        queue_deletion(db, database, user_id, ["a"])
+        db.commit()
+
+    await run_worker(database, vault, DeletingGateway(DeletableGarmin()))
+
+    with database.session() as db:
+        connection = db.get(GarminConnection, user_id)
+        assert vault.read(connection) == '{"token":"refreshed"}'
+    database.engine.dispose()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("journal_schedule, expected_calls", [("9999", [9999]), (None, [])])
+async def test_deletion_uses_newer_journal_identity(
+    worker_settings, journal_schedule, expected_calls
+):
+    database = Database(worker_settings.database_url)
+    vault = GarminTokens(
+        TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes
+    )
+    user_id = seed_links(database, vault, [("a", "2026-10-01")])
+    with database.session() as db:
+        db.add(WorkoutOperation(
+            user_id=user_id,
+            workout_key="a",
+            content_hash="new-hash",
+            progress=json.dumps({
+                "stage": "updated",
+                "workout_id": "999",
+                "schedule_id": journal_schedule,
+                "scheduled_date": "2026-10-03",
+            }),
+        ))
+        queue_deletion(db, database, user_id, ["a"])
+        db.commit()
+    client = DeletableGarmin()
+
+    await run_worker(database, vault, DeletingGateway(client))
+
+    assert client.unschedule_calls == expected_calls
+    assert client.delete_calls == [999]
+    database.engine.dispose()
+
+
+@pytest.mark.anyio
 async def test_a_workout_already_gone_in_garmin_counts_as_deleted(worker_settings):
     database = Database(worker_settings.database_url)
     vault = GarminTokens(

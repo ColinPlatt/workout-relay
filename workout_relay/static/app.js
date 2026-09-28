@@ -58,6 +58,8 @@ const translations = {
     confirmDeleteWorkout: "Delete \u201c{title}\u201d from Garmin? It is removed from your calendar and your workout library. This cannot be undone.",
     confirmDeletePast: "\u201c{title}\u201d is dated {date}, in the past. Deleting it rewrites training history you have already done. Delete anyway?",
     workoutDeleted: "Workout deleted.", workoutsDeleting: "Deleting in the background\u2026",
+    workoutDeletePartial: "{deleted} deleted; {refused} could not be deleted: {reason}",
+    workoutDeletePending: "Deletion is still running. Refresh the list shortly.",
     detailConnectedSince: "Connected since", detailLastSignIn: "Last Garmin sign-in",
     detailAccount: "Garmin account", detailStorage: "Session kept", detailExpires: "Expires",
     storageVisit: "This visit only", storageKeep: "Until you disconnect",
@@ -249,6 +251,8 @@ const translations = {
     confirmDeleteWorkout: "Supprimer «\u00a0{title}\u00a0» de Garmin ? Elle est retirée de votre calendrier et de votre bibliothèque. Cette action est irréversible.",
     confirmDeletePast: "«\u00a0{title}\u00a0» est datée du {date}, dans le passé. La supprimer réécrit un historique d'entraînement déjà réalisé. Supprimer quand même ?",
     workoutDeleted: "Séance supprimée.", workoutsDeleting: "Suppression en arrière-plan\u2026",
+    workoutDeletePartial: "{deleted} supprimée(s) ; {refused} n'ont pas pu être supprimée(s) : {reason}",
+    workoutDeletePending: "La suppression est toujours en cours. Actualisez bientôt la liste.",
     detailConnectedSince: "Connecté depuis", detailLastSignIn: "Dernière connexion Garmin",
     detailAccount: "Compte Garmin", detailStorage: "Session conservée", detailExpires: "Expire",
     storageVisit: "Cette visite uniquement", storageKeep: "Jusqu'à déconnexion",
@@ -617,29 +621,45 @@ async function loadWorkouts() {
     if (!confirm(past ? t("confirmDeletePast", { title, date: item.scheduled_date }) : t("confirmDeleteWorkout", { title }))) return;
     setBusy(button, true);
     try {
-      await api("/api/v1/workouts/delete", {
+      const queued = await api("/api/v1/workouts/delete", {
         method: "POST",
         body: JSON.stringify({ workout_ids: [item.workout_id], include_past: past }),
       });
       showToast(t("workoutsDeleting"));
       // The worker does the Garmin call, so the row goes when it reports back.
-      await pollDeletion();
+      await pollDeletion(queued.id);
     } catch (error) { showToast(errorText(error)); setBusy(button, false); }
     await Promise.all([loadWorkouts(), loadHistory()]);
   }));
 }
 
-async function pollDeletion() {
+async function pollDeletion(jobId) {
   for (let attempt = 0; attempt < 15; attempt += 1) {
     await new Promise((resolve) => window.setTimeout(resolve, 1000));
-    const data = await api("/api/v1/plans");
-    const job = data.items.find((item) => item.kind === "deletion");
-    if (!job || job.status === "completed" || job.status === "failed") {
-      if (job?.status === "failed") showToast(errorText({ code: job.result?.code }));
-      else showToast(t("workoutDeleted"));
+    const job = await api(`/api/v1/plans/${encodeURIComponent(jobId)}`);
+    if (job.status === "failed") {
+      showToast(errorText({ code: job.result?.code }));
+      return;
+    }
+    if (job.status === "completed") {
+      const counts = job.result?.counts || {};
+      const refused = counts.refused || 0;
+      if (refused) {
+        const refusal = job.result?.workouts?.find((item) => item.action === "refused");
+        showToast(t("workoutDeletePartial", {
+          deleted: (counts.deleted || 0) + (counts.already_gone || 0),
+          refused,
+          reason: errorText({ code: refusal?.code }),
+        }));
+      } else if ((counts.deleted || 0) + (counts.already_gone || 0) > 0) {
+        showToast(t("workoutDeleted"));
+      } else {
+        showToast(errorText({ code: "internal_delete_error" }));
+      }
       return;
     }
   }
+  showToast(t("workoutDeletePending"));
 }
 
 async function loadConnections() {

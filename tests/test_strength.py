@@ -294,6 +294,28 @@ def test_sets_become_a_repeat_group_like_garmins():
     assert len(group["workoutSteps"]) == 2
 
 
+def test_strength_steps_use_garmins_flat_order_and_repeat_group_ids():
+    payload = built([
+        {"type": "warmup", "exercise": "PLANK", "duration": SECONDS},
+        {"type": "repeat", "count": 3, "steps": [
+            {"type": "interval", "exercise": "AIR_SQUAT", "duration": REPS},
+            {"type": "rest", "duration": SECONDS},
+        ]},
+        {"type": "repeat", "count": 2, "steps": [
+            {"type": "interval", "exercise": "PLANK", "duration": SECONDS},
+        ]},
+    ])
+    first, group_one, group_two = payload["workoutSegments"][0]["workoutSteps"]
+
+    assert first["stepOrder"] == 1
+    assert (group_one["stepOrder"], group_one["childStepId"]) == (2, 1)
+    assert [(step["stepOrder"], step["childStepId"])
+            for step in group_one["workoutSteps"]] == [(3, 1), (4, 1)]
+    assert (group_two["stepOrder"], group_two["childStepId"]) == (5, 2)
+    assert [(step["stepOrder"], step["childStepId"])
+            for step in group_two["workoutSteps"]] == [(6, 2)]
+
+
 def test_coaching_notes_travel_as_the_step_description():
     payload = built([
         {"type": "interval", "exercise": "PLANK", "duration": SECONDS,
