@@ -36,11 +36,13 @@ from .security import hash_token, opaque_token
 
 logger = logging.getLogger(__name__)
 
-SCOPES = ("plans:read", "plans:write", "activities:read")
+SCOPES = ("plans:read", "plans:write", "plans:delete", "activities:read")
 # What a client gets when it asks for nothing. RFC 6749 section 3.3 requires a
 # defined default, and granting none leaves a connection that authorizes fine
 # and then fails every call. Activity access is deliberately not included: it
 # covers health measurements and has to be asked for.
+# Deleting is irreversible in Garmin, so it is never granted by omission:
+# a client has to ask for it and the person has to see it on the consent page.
 DEFAULT_SCOPES = ("plans:read", "plans:write")
 CONSENT_PATH = "/oauth/consent"
 AUTHORIZATION_CODE_TTL = timedelta(minutes=10)

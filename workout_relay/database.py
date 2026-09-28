@@ -79,9 +79,13 @@ class ActivityAccess(Base):
 
 
 class PlanSubmission(Base):
+    # kind "plan" carries a plan to upload; "deletion" carries workout ids to
+    # remove. Both ride the same queue so deletions inherit the upload lock,
+    # the single Garmin sign-in, and status polling.
     __tablename__ = "plan_submissions"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(20), default="plan")
     plan_id: Mapped[str] = mapped_column(String(100), index=True)
     title: Mapped[str] = mapped_column(String(120))
     content: Mapped[str] = mapped_column(Text)
@@ -97,6 +101,8 @@ class WorkoutLink(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     workout_key: Mapped[str] = mapped_column(String(160))
+    # Carried so a listing can show what a workout is, not just its slug.
+    title: Mapped[str | None] = mapped_column(String(120), nullable=True)
     content_hash: Mapped[str] = mapped_column(String(71))
     garmin_workout_id: Mapped[str] = mapped_column(String(80))
     garmin_schedule_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
@@ -292,6 +298,8 @@ class Database:
 ADDED_COLUMNS = (
     ("garmin_connections", "retention", "VARCHAR(20)", "'persistent'"),
     ("garmin_connections", "visit_expires_at", "TIMESTAMP WITH TIME ZONE", None),
+    ("plan_submissions", "kind", "VARCHAR(20)", "'plan'"),
+    ("workout_links", "title", "VARCHAR(120)", None),
 )
 
 

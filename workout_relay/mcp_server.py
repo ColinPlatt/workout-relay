@@ -30,7 +30,15 @@ from .database import Database, GarminConnection
 from .mcp_probe import allowed_hosts
 from .oauth import SCOPES, RelayOAuthProvider
 from .plans import assistant_instructions, example_plan, plan_schema
-from .submissions import Accepted, PlanRejected, check_plan, queue_plan, recent_submissions
+from .submissions import (
+    Accepted,
+    PlanRejected,
+    check_plan,
+    queue_deletion,
+    queue_plan,
+    recent_submissions,
+    scheduled_workouts,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +101,10 @@ def build_connector(
             "submit_plan, and repair every reported error. submit_plan queues "
             "the work and returns immediately; poll get_plan_status until it "
             "is completed or failed. Reuse a workout's id to edit or move it; "
-            "a new id creates a separate workout. For completed activities, "
+            "a new id creates a separate workout. To remove one, read "
+            "list_scheduled_workouts and then delete_scheduled_workouts, which "
+            "needs its own permission and cannot be undone: confirm with the "
+            "person first. For completed activities, "
             "use list_activities then get_activity with an id from that list. "
             "These require separately consented activities:read access; reconnect "
             "to grant it. Metrics have explicit units; null means unavailable, not zero."
@@ -182,6 +193,45 @@ def build_connector(
             if item is None:
                 return _error("plan_not_found")
             return _ok({"submission": submission_json(item)})
+
+    @server.tool(description=(
+        "Workouts currently scheduled on this person's Garmin calendar through "
+        "Workout Relay, newest date first. Read this before deleting anything, "
+        "and quote the title and date back so they can confirm."
+    ))
+    def list_scheduled_workouts(limit: int = 50) -> str:
+        user_id = _actor("plans:read")
+        with database.session() as db:
+            return _ok({"items": scheduled_workouts(db, user_id, limit)})
+
+    @server.tool(description=(
+        "Permanently delete workouts previously sent by Workout Relay: each is "
+        "removed from the Garmin calendar and from the Garmin workout library. "
+        "This cannot be undone. Requires the separate plans:delete permission. "
+        "Takes workout ids from list_scheduled_workouts, never Garmin ids. "
+        "Workouts dated in the past are refused unless include_past is true. "
+        "Confirm with the person before calling. Returns a job id; poll "
+        "get_plan_status."
+    ))
+    def delete_scheduled_workouts(workout_ids: list[str], include_past: bool = False) -> str:
+        try:
+            user_id = _actor("plans:delete")
+        except NotAuthorized:
+            return _error(
+                "scope_required",
+                required_scope="plans:delete",
+                message="Reconnect and approve deleting workouts.",
+            )
+        with database.session() as db:
+            connection = db.get(GarminConnection, user_id)
+            if connection is None or connection.status != "connected":
+                return _error("garmin_not_connected")
+            try:
+                accepted = queue_deletion(db, database, user_id, workout_ids, include_past)
+            except PlanRejected as rejected:
+                return _error(rejected.code, errors=rejected.errors)
+        notify()
+        return _ok(accepted.as_dict())
 
     @server.tool(description="Recent plan submissions for this account, newest first.")
     def list_recent_plans(limit: int = 5) -> str:

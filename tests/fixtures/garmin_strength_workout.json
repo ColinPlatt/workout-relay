@@ -1,0 +1,1278 @@
+{
+ "workoutId": 1712798046,
+ "ownerId": 0,
+ "workoutName": "Copy of test workout",
+ "description": "test workout ",
+ "updatedDate": "2026-09-28T08:42:27.0",
+ "createdDate": "2026-09-28T08:42:27.0",
+ "sportType": {
+  "sportTypeId": 5,
+  "sportTypeKey": "strength_training",
+  "displayOrder": 4
+ },
+ "subSportType": "GENERIC",
+ "trainingPlanId": null,
+ "author": {
+  "userProfilePk": 0,
+  "displayName": "fixture",
+  "fullName": "Fixture User",
+  "profileImgNameLarge": null,
+  "profileImgNameMedium": null,
+  "profileImgNameSmall": null,
+  "userPro": false,
+  "vivokidUser": false
+ },
+ "sharedWithUsers": null,
+ "estimatedDurationInSecs": 0,
+ "estimatedDistanceInMeters": 0.0,
+ "workoutSegments": [
+  {
+   "segmentOrder": 1,
+   "sportType": {
+    "sportTypeId": 5,
+    "sportTypeKey": "strength_training",
+    "displayOrder": 4
+   },
+   "poolLengthUnit": null,
+   "poolLength": null,
+   "avgTrainingSpeed": null,
+   "estimatedDurationInSecs": null,
+   "estimatedDistanceInMeters": null,
+   "estimatedDistanceUnit": null,
+   "estimateType": null,
+   "description": null,
+   "workoutSteps": [
+    {
+     "type": "ExecutableStepDTO",
+     "stepId": 14756232144,
+     "stepOrder": 1,
+     "stepType": {
+      "stepTypeId": 1,
+      "stepTypeKey": "warmup",
+      "displayOrder": 1
+     },
+     "childStepId": null,
+     "description": null,
+     "endCondition": {
+      "conditionTypeId": 10,
+      "conditionTypeKey": "reps",
+      "displayOrder": 10,
+      "displayable": true
+     },
+     "endConditionValue": 10.0,
+     "preferredEndConditionUnit": {
+      "unitId": 2,
+      "unitKey": "kilometer",
+      "factor": 100000.0
+     },
+     "endConditionCompare": null,
+     "targetType": {
+      "workoutTargetTypeId": 1,
+      "workoutTargetTypeKey": "no.target",
+      "displayOrder": 1
+     },
+     "targetValueOne": null,
+     "targetValueTwo": 0.0,
+     "targetValueUnit": null,
+     "zoneNumber": null,
+     "secondaryTargetType": null,
+     "secondaryTargetValueOne": null,
+     "secondaryTargetValueTwo": null,
+     "secondaryTargetValueUnit": null,
+     "secondaryZoneNumber": null,
+     "endConditionZone": null,
+     "strokeType": {
+      "strokeTypeId": 0,
+      "strokeTypeKey": null,
+      "displayOrder": 0
+     },
+     "equipmentType": {
+      "equipmentTypeId": 0,
+      "equipmentTypeKey": null,
+      "displayOrder": 0
+     },
+     "category": "PLANK",
+     "exerciseName": "_90_DEGREE_STATIC_HOLD",
+     "workoutProvider": null,
+     "providerExerciseSourceId": null,
+     "weightValue": null,
+     "weightUnit": {
+      "unitId": 8,
+      "unitKey": "kilogram",
+      "factor": 1000.0
+     }
+    },
+    {
+     "type": "ExecutableStepDTO",
+     "stepId": 14756232145,
+     "stepOrder": 2,
+     "stepType": {
+      "stepTypeId": 3,
+      "stepTypeKey": "interval",
+      "displayOrder": 3
+     },
+     "childStepId": null,
+     "description": "Arm circles, band pull-aparts, cat-cow, 90/90 hip rotations, hip openers.",
+     "endCondition": {
+      "conditionTypeId": 2,
+      "conditionTypeKey": "time",
+      "displayOrder": 2,
+      "displayable": true
+     },
+     "endConditionValue": 150.0,
+     "preferredEndConditionUnit": null,
+     "endConditionCompare": null,
+     "targetType": {
+      "workoutTargetTypeId": 1,
+      "workoutTargetTypeKey": "no.target",
+      "displayOrder": 1
+     },
+     "targetValueOne": null,
+     "targetValueTwo": null,
+     "targetValueUnit": null,
+     "zoneNumber": null,
+     "secondaryTargetType": null,
+     "secondaryTargetValueOne": null,
+     "secondaryTargetValueTwo": null,
+     "secondaryTargetValueUnit": null,
+     "secondaryZoneNumber": null,
+     "endConditionZone": null,
+     "strokeType": {
+      "strokeTypeId": 0,
+      "strokeTypeKey": null,
+      "displayOrder": 0
+     },
+     "equipmentType": {
+      "equipmentTypeId": 0,
+      "equipmentTypeKey": null,
+      "displayOrder": 0
+     },
+     "category": "WARM_UP",
+     "exerciseName": "",
+     "workoutProvider": null,
+     "providerExerciseSourceId": null,
+     "weightValue": null,
+     "weightUnit": {
+      "unitId": 8,
+      "unitKey": "kilogram",
+      "factor": 1000.0
+     }
+    },
+    {
+     "type": "RepeatGroupDTO",
+     "stepId": 14756232146,
+     "stepOrder": 3,
+     "stepType": {
+      "stepTypeId": 6,
+      "stepTypeKey": "repeat",
+      "displayOrder": 6
+     },
+     "childStepId": 1,
+     "numberOfIterations": 3,
+     "workoutSteps": [
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14756232147,
+       "stepOrder": 4,
+       "stepType": {
+        "stepTypeId": 3,
+        "stepTypeKey": "interval",
+        "displayOrder": 3
+       },
+       "childStepId": 1,
+       "description": "Front plank. Brace hard, squeeze glutes, no hip sag.",
+       "endCondition": {
+        "conditionTypeId": 2,
+        "conditionTypeKey": "time",
+        "displayOrder": 2,
+        "displayable": true
+       },
+       "endConditionValue": 40.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": "PLANK",
+       "exerciseName": "PLANK",
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": null,
+       "weightUnit": {
+        "unitId": 8,
+        "unitKey": "kilogram",
+        "factor": 1000.0
+       }
+      },
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14756232148,
+       "stepOrder": 5,
+       "stepType": {
+        "stepTypeId": 5,
+        "stepTypeKey": "rest",
+        "displayOrder": 5
+       },
+       "childStepId": 1,
+       "description": null,
+       "endCondition": {
+        "conditionTypeId": 2,
+        "conditionTypeKey": "time",
+        "displayOrder": 2,
+        "displayable": true
+       },
+       "endConditionValue": 15.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": null,
+       "exerciseName": null,
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": null,
+       "weightUnit": {
+        "unitId": 8,
+        "unitKey": "kilogram",
+        "factor": 1000.0
+       }
+      },
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14756232149,
+       "stepOrder": 6,
+       "stepType": {
+        "stepTypeId": 3,
+        "stepTypeKey": "interval",
+        "displayOrder": 3
+       },
+       "childStepId": 1,
+       "description": "Dead bug, 12 total (6/side). Low back pinned.",
+       "endCondition": {
+        "conditionTypeId": 10,
+        "conditionTypeKey": "reps",
+        "displayOrder": 10,
+        "displayable": true
+       },
+       "endConditionValue": 12.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": "HIP_STABILITY",
+       "exerciseName": "DEAD_BUG",
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": null,
+       "weightUnit": {
+        "unitId": 8,
+        "unitKey": "kilogram",
+        "factor": 1000.0
+       }
+      },
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14756232150,
+       "stepOrder": 7,
+       "stepType": {
+        "stepTypeId": 5,
+        "stepTypeKey": "rest",
+        "displayOrder": 5
+       },
+       "childStepId": 1,
+       "description": null,
+       "endCondition": {
+        "conditionTypeId": 2,
+        "conditionTypeKey": "time",
+        "displayOrder": 2,
+        "displayable": true
+       },
+       "endConditionValue": 15.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": null,
+       "exerciseName": null,
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": null,
+       "weightUnit": {
+        "unitId": 8,
+        "unitKey": "kilogram",
+        "factor": 1000.0
+       }
+      },
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14756232151,
+       "stepOrder": 8,
+       "stepType": {
+        "stepTypeId": 5,
+        "stepTypeKey": "rest",
+        "displayOrder": 5
+       },
+       "childStepId": 1,
+       "description": null,
+       "endCondition": {
+        "conditionTypeId": 2,
+        "conditionTypeKey": "time",
+        "displayOrder": 2,
+        "displayable": true
+       },
+       "endConditionValue": 60.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": null,
+       "exerciseName": null,
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": null,
+       "weightUnit": {
+        "unitId": 8,
+        "unitKey": "kilogram",
+        "factor": 1000.0
+       }
+      }
+     ],
+     "endConditionValue": 3.0,
+     "preferredEndConditionUnit": null,
+     "endConditionCompare": null,
+     "endCondition": {
+      "conditionTypeId": 7,
+      "conditionTypeKey": "iterations",
+      "displayOrder": 7,
+      "displayable": false
+     },
+     "skipLastRestStep": false,
+     "smartRepeat": false
+    },
+    {
+     "type": "RepeatGroupDTO",
+     "stepId": 14756232152,
+     "stepOrder": 9,
+     "stepType": {
+      "stepTypeId": 6,
+      "stepTypeKey": "repeat",
+      "displayOrder": 6
+     },
+     "childStepId": 2,
+     "numberOfIterations": 3,
+     "workoutSteps": [
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14756232153,
+       "stepOrder": 10,
+       "stepType": {
+        "stepTypeId": 3,
+        "stepTypeKey": "interval",
+        "displayOrder": 3
+       },
+       "childStepId": 2,
+       "description": "Supine leg lowering, 10 slow reps. Low back pinned - strengthens the hip flexor THROUGH range (a tight flexor is often a weak one).",
+       "endCondition": {
+        "conditionTypeId": 10,
+        "conditionTypeKey": "reps",
+        "displayOrder": 10,
+        "displayable": true
+       },
+       "endConditionValue": 10.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": "LEG_RAISE",
+       "exerciseName": "",
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": null,
+       "weightUnit": {
+        "unitId": 8,
+        "unitKey": "kilogram",
+        "factor": 1000.0
+       }
+      },
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14756232154,
+       "stepOrder": 11,
+       "stepType": {
+        "stepTypeId": 5,
+        "stepTypeKey": "rest",
+        "displayOrder": 5
+       },
+       "childStepId": 2,
+       "description": null,
+       "endCondition": {
+        "conditionTypeId": 2,
+        "conditionTypeKey": "time",
+        "displayOrder": 2,
+        "displayable": true
+       },
+       "endConditionValue": 15.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": null,
+       "exerciseName": null,
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": null,
+       "weightUnit": {
+        "unitId": 8,
+        "unitKey": "kilogram",
+        "factor": 1000.0
+       }
+      },
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14756232155,
+       "stepOrder": 12,
+       "stepType": {
+        "stepTypeId": 3,
+        "stepTypeKey": "interval",
+        "displayOrder": 3
+       },
+       "childStepId": 2,
+       "description": "Standing banded march, 12 EACH side. Band round the feet, drive the knee up, stay tall.",
+       "endCondition": {
+        "conditionTypeId": 10,
+        "conditionTypeKey": "reps",
+        "displayOrder": 10,
+        "displayable": true
+       },
+       "endConditionValue": 12.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": "BANDED_EXERCISES",
+       "exerciseName": "LATERAL_BAND_WALKS",
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": 0.0,
+       "weightUnit": {
+        "unitId": 8,
+        "unitKey": "kilogram",
+        "factor": 1000.0
+       }
+      },
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14756232156,
+       "stepOrder": 13,
+       "stepType": {
+        "stepTypeId": 5,
+        "stepTypeKey": "rest",
+        "displayOrder": 5
+       },
+       "childStepId": 2,
+       "description": null,
+       "endCondition": {
+        "conditionTypeId": 2,
+        "conditionTypeKey": "time",
+        "displayOrder": 2,
+        "displayable": true
+       },
+       "endConditionValue": 15.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": null,
+       "exerciseName": null,
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": null,
+       "weightUnit": {
+        "unitId": 8,
+        "unitKey": "kilogram",
+        "factor": 1000.0
+       }
+      },
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14756232157,
+       "stepOrder": 14,
+       "stepType": {
+        "stepTypeId": 3,
+        "stepTypeKey": "interval",
+        "displayOrder": 3
+       },
+       "childStepId": 2,
+       "description": "Band overhead press. Stand on the band, press overhead.",
+       "endCondition": {
+        "conditionTypeId": 10,
+        "conditionTypeKey": "reps",
+        "displayOrder": 10,
+        "displayable": true
+       },
+       "endConditionValue": 15.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": "SHOULDER_PRESS",
+       "exerciseName": "",
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": null,
+       "weightUnit": {
+        "unitId": 8,
+        "unitKey": "kilogram",
+        "factor": 1000.0
+       }
+      },
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14756232158,
+       "stepOrder": 15,
+       "stepType": {
+        "stepTypeId": 5,
+        "stepTypeKey": "rest",
+        "displayOrder": 5
+       },
+       "childStepId": 2,
+       "description": null,
+       "endCondition": {
+        "conditionTypeId": 2,
+        "conditionTypeKey": "time",
+        "displayOrder": 2,
+        "displayable": true
+       },
+       "endConditionValue": 15.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": null,
+       "exerciseName": null,
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": null,
+       "weightUnit": {
+        "unitId": 8,
+        "unitKey": "kilogram",
+        "factor": 1000.0
+       }
+      },
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14756232159,
+       "stepOrder": 16,
+       "stepType": {
+        "stepTypeId": 3,
+        "stepTypeKey": "interval",
+        "displayOrder": 3
+       },
+       "childStepId": 2,
+       "description": "Band pull-apart. Arms straight, squeeze the rear delts.",
+       "endCondition": {
+        "conditionTypeId": 10,
+        "conditionTypeKey": "reps",
+        "displayOrder": 10,
+        "displayable": true
+       },
+       "endConditionValue": 15.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": "BANDED_EXERCISES",
+       "exerciseName": "PULL_APART",
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": 0.0,
+       "weightUnit": {
+        "unitId": 8,
+        "unitKey": "kilogram",
+        "factor": 1000.0
+       }
+      },
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14756232160,
+       "stepOrder": 17,
+       "stepType": {
+        "stepTypeId": 5,
+        "stepTypeKey": "rest",
+        "displayOrder": 5
+       },
+       "childStepId": 2,
+       "description": null,
+       "endCondition": {
+        "conditionTypeId": 2,
+        "conditionTypeKey": "time",
+        "displayOrder": 2,
+        "displayable": true
+       },
+       "endConditionValue": 60.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": null,
+       "exerciseName": null,
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": null,
+       "weightUnit": {
+        "unitId": 8,
+        "unitKey": "kilogram",
+        "factor": 1000.0
+       }
+      }
+     ],
+     "endConditionValue": 3.0,
+     "preferredEndConditionUnit": null,
+     "endConditionCompare": null,
+     "endCondition": {
+      "conditionTypeId": 7,
+      "conditionTypeKey": "iterations",
+      "displayOrder": 7,
+      "displayable": false
+     },
+     "skipLastRestStep": false,
+     "smartRepeat": false
+    },
+    {
+     "type": "RepeatGroupDTO",
+     "stepId": 14756232161,
+     "stepOrder": 18,
+     "stepType": {
+      "stepTypeId": 6,
+      "stepTypeKey": "repeat",
+      "displayOrder": 6
+     },
+     "childStepId": 3,
+     "numberOfIterations": 2,
+     "workoutSteps": [
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14756232162,
+       "stepOrder": 19,
+       "stepType": {
+        "stepTypeId": 3,
+        "stepTypeKey": "interval",
+        "displayOrder": 3
+       },
+       "childStepId": 3,
+       "description": "Suitcase carry, 6kg KB one side. 40s EACH side per round. Brace, stay tall, don't lean.",
+       "endCondition": {
+        "conditionTypeId": 2,
+        "conditionTypeKey": "time",
+        "displayOrder": 2,
+        "displayable": true
+       },
+       "endConditionValue": 40.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": "CARRY",
+       "exerciseName": "",
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": null,
+       "weightUnit": {
+        "unitId": 8,
+        "unitKey": "kilogram",
+        "factor": 1000.0
+       }
+      },
+      {
+       "type": "ExecutableStepDTO",
+       "stepId": 14756232163,
+       "stepOrder": 20,
+       "stepType": {
+        "stepTypeId": 5,
+        "stepTypeKey": "rest",
+        "displayOrder": 5
+       },
+       "childStepId": 3,
+       "description": null,
+       "endCondition": {
+        "conditionTypeId": 2,
+        "conditionTypeKey": "time",
+        "displayOrder": 2,
+        "displayable": true
+       },
+       "endConditionValue": 45.0,
+       "preferredEndConditionUnit": null,
+       "endConditionCompare": null,
+       "targetType": {
+        "workoutTargetTypeId": 1,
+        "workoutTargetTypeKey": "no.target",
+        "displayOrder": 1
+       },
+       "targetValueOne": null,
+       "targetValueTwo": null,
+       "targetValueUnit": null,
+       "zoneNumber": null,
+       "secondaryTargetType": null,
+       "secondaryTargetValueOne": null,
+       "secondaryTargetValueTwo": null,
+       "secondaryTargetValueUnit": null,
+       "secondaryZoneNumber": null,
+       "endConditionZone": null,
+       "strokeType": {
+        "strokeTypeId": 0,
+        "strokeTypeKey": null,
+        "displayOrder": 0
+       },
+       "equipmentType": {
+        "equipmentTypeId": 0,
+        "equipmentTypeKey": null,
+        "displayOrder": 0
+       },
+       "category": null,
+       "exerciseName": null,
+       "workoutProvider": null,
+       "providerExerciseSourceId": null,
+       "weightValue": null,
+       "weightUnit": {
+        "unitId": 8,
+        "unitKey": "kilogram",
+        "factor": 1000.0
+       }
+      }
+     ],
+     "endConditionValue": 2.0,
+     "preferredEndConditionUnit": null,
+     "endConditionCompare": null,
+     "endCondition": {
+      "conditionTypeId": 7,
+      "conditionTypeKey": "iterations",
+      "displayOrder": 7,
+      "displayable": false
+     },
+     "skipLastRestStep": false,
+     "smartRepeat": false
+    },
+    {
+     "type": "ExecutableStepDTO",
+     "stepId": 14756232164,
+     "stepOrder": 21,
+     "stepType": {
+      "stepTypeId": 3,
+      "stepTypeKey": "interval",
+      "displayOrder": 3
+     },
+     "childStepId": null,
+     "description": null,
+     "endCondition": {
+      "conditionTypeId": 10,
+      "conditionTypeKey": "reps",
+      "displayOrder": 10,
+      "displayable": true
+     },
+     "endConditionValue": 10.0,
+     "preferredEndConditionUnit": {
+      "unitId": 2,
+      "unitKey": "kilometer",
+      "factor": 100000.0
+     },
+     "endConditionCompare": null,
+     "targetType": {
+      "workoutTargetTypeId": 1,
+      "workoutTargetTypeKey": "no.target",
+      "displayOrder": 1
+     },
+     "targetValueOne": null,
+     "targetValueTwo": 0.0,
+     "targetValueUnit": null,
+     "zoneNumber": null,
+     "secondaryTargetType": null,
+     "secondaryTargetValueOne": null,
+     "secondaryTargetValueTwo": null,
+     "secondaryTargetValueUnit": null,
+     "secondaryZoneNumber": null,
+     "endConditionZone": null,
+     "strokeType": {
+      "strokeTypeId": 0,
+      "strokeTypeKey": null,
+      "displayOrder": 0
+     },
+     "equipmentType": {
+      "equipmentTypeId": 0,
+      "equipmentTypeKey": null,
+      "displayOrder": 0
+     },
+     "category": "HIP_RAISE",
+     "exerciseName": "KETTLEBELL_SWING",
+     "workoutProvider": null,
+     "providerExerciseSourceId": null,
+     "weightValue": 6.0,
+     "weightUnit": {
+      "unitId": 8,
+      "unitKey": "kilogram",
+      "factor": 1000.0
+     }
+    },
+    {
+     "type": "ExecutableStepDTO",
+     "stepId": 14756232165,
+     "stepOrder": 22,
+     "stepType": {
+      "stepTypeId": 3,
+      "stepTypeKey": "interval",
+      "displayOrder": 3
+     },
+     "childStepId": null,
+     "description": "Chest/shoulders, thoracic, hip flexors (pelvis tucked).",
+     "endCondition": {
+      "conditionTypeId": 2,
+      "conditionTypeKey": "time",
+      "displayOrder": 2,
+      "displayable": true
+     },
+     "endConditionValue": 120.0,
+     "preferredEndConditionUnit": null,
+     "endConditionCompare": null,
+     "targetType": {
+      "workoutTargetTypeId": 1,
+      "workoutTargetTypeKey": "no.target",
+      "displayOrder": 1
+     },
+     "targetValueOne": null,
+     "targetValueTwo": null,
+     "targetValueUnit": null,
+     "zoneNumber": null,
+     "secondaryTargetType": null,
+     "secondaryTargetValueOne": null,
+     "secondaryTargetValueTwo": null,
+     "secondaryTargetValueUnit": null,
+     "secondaryZoneNumber": null,
+     "endConditionZone": null,
+     "strokeType": {
+      "strokeTypeId": 0,
+      "strokeTypeKey": null,
+      "displayOrder": 0
+     },
+     "equipmentType": {
+      "equipmentTypeId": 0,
+      "equipmentTypeKey": null,
+      "displayOrder": 0
+     },
+     "category": "TOTAL_BODY",
+     "exerciseName": "",
+     "workoutProvider": null,
+     "providerExerciseSourceId": null,
+     "weightValue": null,
+     "weightUnit": {
+      "unitId": 8,
+      "unitKey": "kilogram",
+      "factor": 1000.0
+     }
+    },
+    {
+     "type": "ExecutableStepDTO",
+     "stepId": 14756232166,
+     "stepOrder": 23,
+     "stepType": {
+      "stepTypeId": 3,
+      "stepTypeKey": "interval",
+      "displayOrder": 3
+     },
+     "childStepId": null,
+     "description": "",
+     "endCondition": {
+      "conditionTypeId": 10,
+      "conditionTypeKey": "reps",
+      "displayOrder": 10,
+      "displayable": true
+     },
+     "endConditionValue": 10.0,
+     "preferredEndConditionUnit": {
+      "unitId": 2,
+      "unitKey": "kilometer",
+      "factor": 100000.0
+     },
+     "endConditionCompare": null,
+     "targetType": {
+      "workoutTargetTypeId": 1,
+      "workoutTargetTypeKey": "no.target",
+      "displayOrder": 1
+     },
+     "targetValueOne": null,
+     "targetValueTwo": 0.0,
+     "targetValueUnit": null,
+     "zoneNumber": null,
+     "secondaryTargetType": null,
+     "secondaryTargetValueOne": null,
+     "secondaryTargetValueTwo": null,
+     "secondaryTargetValueUnit": null,
+     "secondaryZoneNumber": null,
+     "endConditionZone": null,
+     "strokeType": {
+      "strokeTypeId": 0,
+      "strokeTypeKey": null,
+      "displayOrder": 0
+     },
+     "equipmentType": {
+      "equipmentTypeId": 0,
+      "equipmentTypeKey": null,
+      "displayOrder": 0
+     },
+     "category": "DEADLIFT",
+     "exerciseName": "ROMANIAN_DEADLIFT",
+     "workoutProvider": null,
+     "providerExerciseSourceId": null,
+     "weightValue": 8.0,
+     "weightUnit": {
+      "unitId": 8,
+      "unitKey": "kilogram",
+      "factor": 1000.0
+     }
+    }
+   ]
+  }
+ ],
+ "poolLength": null,
+ "poolLengthUnit": null,
+ "locale": null,
+ "workoutProvider": null,
+ "workoutSourceId": null,
+ "uploadTimestamp": null,
+ "atpPlanId": null,
+ "consumer": null,
+ "consumerName": null,
+ "consumerImageURL": null,
+ "consumerWebsiteURL": null,
+ "workoutNameI18nKey": null,
+ "descriptionI18nKey": null,
+ "avgTrainingSpeed": 0.0,
+ "estimateType": null,
+ "estimatedDistanceUnit": {
+  "unitId": null,
+  "unitKey": null,
+  "factor": null
+ },
+ "workoutThumbnailUrl": null,
+ "isSessionTransitionEnabled": null,
+ "shared": false
+}

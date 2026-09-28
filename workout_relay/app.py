@@ -48,7 +48,14 @@ from .garmin import Connected, GarminError, Gateway, LiveGarminGateway, MfaRequi
 from .mcp_probe import BearerGate, build_server
 from .mcp_server import build_connector
 from .oauth import SCOPES, RelayOAuthProvider, approve, connections, deny, pending_grant, revoke_family
-from .submissions import PlanRejected, check_plan, queue_plan, recent_submissions
+from .submissions import (
+    PlanRejected,
+    check_plan,
+    queue_deletion,
+    queue_plan,
+    recent_submissions,
+    scheduled_workouts,
+)
 from .plans import assistant_instructions, example_plan, plan_schema, validate_plan
 from .rate_limit import RateLimiter
 from .retention import RETENTIONS, VISIT, GarminTokens
@@ -104,6 +111,13 @@ class GarminMfa(BaseModel):
 class PasswordChange(BaseModel):
     current_password: SecretStr = Field(min_length=1, max_length=200)
     new_password: SecretStr = Field(min_length=12, max_length=200)
+
+
+class DeleteWorkouts(BaseModel):
+    workout_ids: list[str] = Field(min_length=1, max_length=50)
+    # A session that has already happened is part of the record, so removing
+    # one has to be asked for rather than assumed.
+    include_past: bool = False
 
 
 class AccountDeletion(BaseModel):
@@ -385,16 +399,24 @@ def create_app(
                 return Actor(user, "session", frozenset(SCOPES), csrf_hash)
         raise api_error(401, "authentication_required")
 
-    async def mutation_actor(
-        current: Actor = Depends(actor),
-        csrf: str | None = Header(default=None, alias="X-CSRF-Token"),
-    ) -> Actor:
-        if current.method == "session":
-            if not csrf or not hmac.compare_digest(hash_token(csrf), current.csrf_hash or ""):
-                raise api_error(403, "csrf_failed")
-        elif "plans:write" not in current.scopes:
-            raise api_error(403, "scope_required")
-        return current
+    def require_scope(scope: str):
+        """A mutation guarded by one scope, or by CSRF for a browser session."""
+
+        async def dependency(
+            current: Actor = Depends(actor),
+            csrf: str | None = Header(default=None, alias="X-CSRF-Token"),
+        ) -> Actor:
+            if current.method == "session":
+                if not csrf or not hmac.compare_digest(hash_token(csrf), current.csrf_hash or ""):
+                    raise api_error(403, "csrf_failed")
+            elif scope not in current.scopes:
+                raise api_error(403, "scope_required")
+            return current
+
+        return dependency
+
+    mutation_actor = require_scope("plans:write")
+    delete_actor = require_scope("plans:delete")
 
     async def session_mutation_actor(current: Actor = Depends(mutation_actor)) -> Actor:
         if current.method != "session":
@@ -788,6 +810,31 @@ def create_app(
         except ActivityError as exc:
             raise api_error(exc.status, exc.code) from None
 
+    @app.get("/api/v1/workouts", tags=["Workouts"])
+    async def list_workouts(current: Actor = Depends(actor), db: Session = Depends(db_session)):
+        if "plans:read" not in current.scopes:
+            raise api_error(403, "scope_required")
+        return {"items": scheduled_workouts(db, current.user.id)}
+
+    @app.post("/api/v1/workouts/delete", status_code=202, tags=["Workouts"])
+    async def delete_workouts(
+        body: DeleteWorkouts,
+        current: Actor = Depends(delete_actor),
+        db: Session = Depends(db_session),
+    ):
+        """POST rather than DELETE: a body on DELETE is dropped by some proxies."""
+        connection = db.get(GarminConnection, current.user.id)
+        if not connection or connection.status != "connected":
+            raise api_error(409, "garmin_not_connected")
+        try:
+            accepted = queue_deletion(
+                db, database, current.user.id, body.workout_ids, body.include_past
+            )
+        except PlanRejected as rejected:
+            raise plan_error(rejected)
+        queue_event.set()
+        return accepted.as_dict()
+
     @app.get("/api/v1/garmin/status", tags=["Garmin"])
     async def garmin_status(current: Actor = Depends(actor), db: Session = Depends(db_session)):
         connection = db.get(GarminConnection, current.user.id)
@@ -1021,16 +1068,23 @@ async def _process_owned_submission(database, tokens_store, gateway, locks, asse
         # Only the exclusive owner may recover interrupted submissions. Startup
         # alone is not evidence that the previous deployment has stopped.
         db.execute(update(PlanSubmission).where(PlanSubmission.status == "processing").values(status="queued"))
+        db.execute(
+            update(PlanSubmission)
+            .where(PlanSubmission.status == "processing_delete")
+            .values(status="queued_delete")
+        )
         db.commit()
         submission = db.scalar(
             select(PlanSubmission)
-            .where(PlanSubmission.status == "queued")
+            .where(PlanSubmission.status.in_(("queued", "queued_delete")))
             .order_by(PlanSubmission.created_at.asc())
             .limit(1)
         )
         if not submission:
             return False
-        submission.status = "processing"
+        submission.status = (
+            "processing_delete" if submission.status == "queued_delete" else "processing"
+        )
         db.commit()
         connection = db.get(GarminConnection, submission.user_id)
         if not connection or connection.status != "connected":
@@ -1045,7 +1099,15 @@ async def _process_owned_submission(database, tokens_store, gateway, locks, asse
             )
             db.commit()
             return True
-        plan = json.loads(submission.content)
+        payload = json.loads(submission.content)
+        if submission.kind == "deletion":
+            async with locks.get(submission.user_id):
+                await process_deletion(
+                    db, database, tokens_store, gateway, submission.user_id,
+                    connection, submission, payload.get("workout_ids", []), assert_owned,
+                )
+            return True
+        plan = payload
         async with locks.get(submission.user_id):
             await process_plan(
                 db,
@@ -1059,6 +1121,118 @@ async def _process_owned_submission(database, tokens_store, gateway, locks, asse
                 assert_owned,
             )
         return True
+
+
+async def process_deletion(
+    db: Session,
+    database: Database,
+    tokens_store: GarminTokens,
+    gateway: Gateway,
+    user_id: str,
+    connection: GarminConnection,
+    submission: PlanSubmission,
+    workout_ids: list,
+    assert_owned,
+) -> dict:
+    """Remove workouts from the calendar and from the Garmin library.
+
+    Runs on the upload worker so a deletion cannot overlap a publish of the
+    same workout, and so one Garmin sign-in covers the batch. The link and
+    journal rows go last: while they exist the workout is considered live, so
+    losing them before Garmin confirms would strand it.
+    """
+    results = []
+    counts = {"deleted": 0, "already_gone": 0, "refused": 0}
+    try:
+        tokens = tokens_store.read(connection)
+        garmin = None
+        for workout_key in workout_ids:
+            assert_owned()
+            link = db.scalar(
+                select(WorkoutLink).where(
+                    WorkoutLink.user_id == user_id, WorkoutLink.workout_key == workout_key
+                )
+            )
+            if link is None:
+                counts["refused"] += 1
+                results.append({"id": workout_key, "action": "refused", "code": "workout_not_found"})
+                continue
+            operation = db.scalar(
+                select(WorkoutOperation).where(
+                    WorkoutOperation.user_id == user_id,
+                    WorkoutOperation.workout_key == workout_key,
+                )
+            )
+            progress = json.loads(operation.progress) if operation else {}
+            if progress.get("stage") in AMBIGUOUS_STAGES:
+                # An unresolved create or schedule may still be landing at
+                # Garmin. Deleting now could race it and leave an orphan.
+                counts["refused"] += 1
+                results.append({
+                    "id": workout_key, "action": "refused",
+                    "code": "garmin_prior_upload_unresolved",
+                })
+                continue
+            if operation is None:
+                operation = WorkoutOperation(
+                    user_id=user_id, workout_key=workout_key, content_hash=link.content_hash
+                )
+                db.add(operation)
+            operation.progress = json.dumps({
+                "stage": "deleting",
+                "workout_id": link.garmin_workout_id,
+                "schedule_id": link.garmin_schedule_id,
+                "scheduled_date": link.scheduled_date,
+            })
+            db.commit()
+            if garmin is None:
+                garmin = await drain_thread(gateway.open_session, tokens)
+            outcome = await drain_thread(
+                garmin.remove, link.garmin_workout_id, link.garmin_schedule_id
+            )
+            assert_owned()
+            db.delete(link)
+            if operation is not None:
+                db.delete(operation)
+            gone = outcome.get("already_gone") and not outcome.get("deleted")
+            counts["already_gone" if gone else "deleted"] += 1
+            results.append({
+                "id": workout_key,
+                "action": "already_gone" if gone else "deleted",
+                "garmin_workout_id": link.garmin_workout_id,
+            })
+            db.commit()
+        submission.status = "completed"
+        submission.completed_at = now()
+        submission.result = json.dumps({"counts": counts, "workouts": results})
+        database.audit(db, "workouts.deleted", user_id, {"submission_id": submission.id, **counts})
+        db.commit()
+        return {"id": submission.id, "status": "completed", "counts": counts}
+    except GarminError as exc:
+        db.rollback()
+        assert_owned()
+        if exc.code == "garmin_reauthentication_required":
+            connection.status = "reauthentication_required"
+        result = {"status": "failed", "code": exc.code, "counts": counts, "workouts": results}
+        submission.status = "failed"
+        submission.completed_at = now()
+        submission.result = json.dumps(result)
+        database.audit(db, "workouts.delete_failed", user_id,
+                       {"submission_id": submission.id, "code": exc.code})
+        db.commit()
+        return {"id": submission.id, **result}
+    except Exception:
+        logger.exception("workout deletion failed")
+        db.rollback()
+        assert_owned()
+        result = {"status": "failed", "code": "internal_delete_error", "counts": counts}
+        submission.status = "failed"
+        submission.completed_at = now()
+        submission.result = json.dumps(result)
+        database.audit(db, "workouts.delete_failed", user_id,
+                       {"submission_id": submission.id, "code": result["code"]})
+        db.commit()
+        return {"id": submission.id, **result}
 
 
 async def process_plan(
@@ -1091,6 +1265,10 @@ async def process_plan(
                     WorkoutLink.workout_key == workout_data["id"],
                 )
             )
+            if progress.get("stage") == DELETING_STAGE:
+                # Deleting takes precedence: finish or retry the deletion rather
+                # than quietly putting the workout back.
+                raise GarminError("garmin_delete_in_progress")
             if operation and operation.content_hash != digest and not replaceable(progress, operation, link):
                 raise GarminError("garmin_prior_upload_unresolved")
             settled = progress.get("stage", "completed") == "completed"
@@ -1149,6 +1327,7 @@ async def process_plan(
                 connection.encrypted_tokens = stored
             if link:
                 action = "updated"
+                link.title = workout_data.get("title")
                 link.content_hash = digest
                 link.garmin_workout_id = published.workout_id
                 link.garmin_schedule_id = published.schedule_id
@@ -1159,6 +1338,7 @@ async def process_plan(
                     WorkoutLink(
                         user_id=user_id,
                         workout_key=workout_data["id"],
+                        title=workout_data.get("title"),
                         content_hash=digest,
                         garmin_workout_id=published.workout_id,
                         garmin_schedule_id=published.schedule_id,
@@ -1213,6 +1393,7 @@ async def process_plan(
 
 
 AMBIGUOUS_STAGES = ("creating", "scheduling")
+DELETING_STAGE = "deleting"
 
 
 def replaceable(progress: dict, operation: WorkoutOperation, link: WorkoutLink | None) -> bool:
@@ -1224,6 +1405,10 @@ def replaceable(progress: dict, operation: WorkoutOperation, link: WorkoutLink |
     the conservative behaviour.
     """
     stage = progress.get("stage", "completed")
+    if stage == DELETING_STAGE:
+        # A delete is in flight or was interrupted. Re-publishing here would
+        # recreate exactly what the person asked to remove.
+        return False
     if stage in AMBIGUOUS_STAGES:
         return False
     if stage == "ready":
@@ -1357,6 +1542,7 @@ CONSENT_TEXT = {
         "plans:read": "read your plan format, submissions and Garmin connection status",
         "activities:read": "ask Garmin for completed activity data, which may reach Workout Relay with GPS coordinates; remove coordinates and route data on the Workout Relay server, then share the filtered metrics (including heart rate, pace and distance) with this assistant",
         "plans:write": "send workout plans to your Garmin calendar",
+        "plans:delete": "delete workouts it previously scheduled, removing them from your Garmin calendar and workout library",
         "never": "It will never receive your Garmin password, your Garmin session tokens, or your Workout Relay password.",
         "revoke": "You can revoke this at any time under Assistants, Connected assistants.",
         "signin": "Sign in to continue",
@@ -1376,6 +1562,7 @@ CONSENT_TEXT = {
         "plans:read": "lire votre format de plan, vos envois et l'état de la connexion Garmin",
         "activities:read": "demander à Garmin les activités terminées, qui peuvent parvenir à Workout Relay avec des coordonnées GPS ; supprimer les coordonnées et le tracé sur le serveur Workout Relay, puis transmettre à cet assistant les mesures filtrées (dont fréquence cardiaque, allure et distance)",
         "plans:write": "envoyer des plans d'entraînement vers votre calendrier Garmin",
+        "plans:delete": "supprimer les séances qu'il a programmées, les retirant de votre calendrier et de votre bibliothèque Garmin",
         "never": "Il ne recevra jamais votre mot de passe Garmin, vos jetons de session Garmin, ni votre mot de passe Workout Relay.",
         "revoke": "Vous pouvez révoquer cet accès à tout moment dans Assistants, Assistants connectés.",
         "signin": "Connectez-vous pour continuer",

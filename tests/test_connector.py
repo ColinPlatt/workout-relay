@@ -11,7 +11,7 @@ import pytest
 from sqlalchemy import select
 
 from workout_relay.app import create_app
-from workout_relay.database import GarminConnection, OAuthToken, PlanSubmission, User
+from workout_relay.database import GarminConnection, OAuthToken, PlanSubmission, User, WorkoutLink
 from workout_relay.plans import EXAMPLE_PLAN
 
 REDIRECT = "https://assistant.example/callback"
@@ -642,3 +642,96 @@ async def test_the_challenge_names_the_document_clients_can_match(connector_sett
 
             document = (await client.get("/.well-known/oauth-protected-resource/mcp")).json()
             assert document["resource"] == "http://localhost:8000/mcp"
+
+
+@pytest.mark.anyio
+async def test_deleting_is_never_granted_by_default(connector_settings):
+    """Deleting is irreversible in Garmin, so omitting scope must not grant it."""
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            csrf = await register_account(client)
+            _, tokens = await granted_token(client, csrf, scope="plans:read plans:write")
+            assert "plans:delete" not in tokens["scope"]
+
+
+@pytest.mark.anyio
+async def test_deleting_without_the_permission_says_which_one_is_missing(connector_settings):
+    """A connector set to allow adding but ask before deleting lands here, so
+    the refusal has to name the scope rather than read as a generic failure."""
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            csrf = await register_account(client)
+            await connect_garmin(client, csrf)
+            _, tokens = await granted_token(client, csrf, scope="plans:read plans:write")
+            result = await call_tool(
+                client, tokens["access_token"],
+                "delete_scheduled_workouts", {"workout_ids": ["anything"]},
+            )
+            body = json.loads(result.json()["result"]["content"][0]["text"])
+            assert body["ok"] is False
+            assert body["code"] == "scope_required"
+            assert body["required_scope"] == "plans:delete"
+
+
+@pytest.mark.anyio
+async def test_granted_deletion_reaches_the_queue(connector_settings):
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            csrf = await register_account(client)
+            await connect_garmin(client, csrf)
+            _, tokens = await granted_token(
+                client, csrf, scope="plans:read plans:write plans:delete"
+            )
+            database = app.state.database
+            with database.session() as db:
+                user = db.scalar(select(User))
+                db.add(WorkoutLink(
+                    user_id=user.id, workout_key="w1", title="Easy 30",
+                    garmin_workout_id="1000", garmin_schedule_id="2000",
+                    scheduled_date="2099-01-01", content_hash="hash",
+                ))
+                db.commit()
+
+            listed = await call_tool(client, tokens["access_token"], "list_scheduled_workouts")
+            items = json.loads(listed.json()["result"]["content"][0]["text"])["items"]
+            assert [item["workout_id"] for item in items] == ["w1"]
+
+            # The id comes from the listing, which is the only handle a caller has.
+            deleted = await call_tool(
+                client, tokens["access_token"],
+                "delete_scheduled_workouts", {"workout_ids": ["w1"]},
+            )
+            body = json.loads(deleted.json()["result"]["content"][0]["text"])
+            assert body["ok"] is True and body["status"] == "queued"
+            with database.session() as db:
+                queued = db.scalar(
+                    select(PlanSubmission).where(PlanSubmission.kind == "deletion")
+                )
+                # The running worker may already have claimed it; what matters
+                # is that it was queued as a deletion carrying our id.
+                assert queued is not None
+                assert json.loads(queued.content)["workout_ids"] == ["w1"]
+
+
+@pytest.mark.anyio
+async def test_the_consent_screen_names_deletion_in_both_languages(connector_settings):
+    """An unexplained scope on the consent screen is not informed consent."""
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            await register_account(client)
+            registration = await register_client(client)
+            _, challenge = verifier_pair()
+            grant_id = await authorize(
+                client, registration, challenge,
+                scope="plans:read plans:write plans:delete",
+            )
+            for language, phrase in (("en", "delete"), ("fr", "supprimer")):
+                page = await client.get(
+                    "/oauth/consent", params={"request": grant_id, "lang": language}
+                )
+                assert phrase in page.text.lower(), language
+                assert "plans:delete" not in page.text  # never the raw scope name

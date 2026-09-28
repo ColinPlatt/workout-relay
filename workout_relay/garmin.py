@@ -63,6 +63,8 @@ class GarminSession(Protocol):
 
     def activity_laps(self, activity_id: str) -> dict: ...
 
+    def remove(self, workout_id: str, schedule_id: str | None) -> dict: ...
+
     def publish(self, workout: Any, date: str, existing: dict | None, *, progress: dict, checkpoint: Callable) -> Published: ...
 
     def cleanup_marker(self, workout: Any, workout_id: str, *, progress: dict, checkpoint: Callable) -> None: ...
@@ -328,6 +330,37 @@ class LiveGarminSession:
         except Exception as exc:
             raise _publish_error(exc) from exc
 
+    def remove(self, workout_id: str, schedule_id: str | None) -> dict:
+        """Unschedule, then delete the workout itself.
+
+        Both calls are repeatable: a precise 404 means someone already removed
+        it in Garmin, which is the outcome we wanted, so it counts as success
+        rather than an error. Anything else propagates.
+        """
+        client = self._client
+        removed = {"unscheduled": False, "deleted": False, "already_gone": False}
+        try:
+            if schedule_id:
+                try:
+                    client.unschedule_workout(int(schedule_id))
+                    removed["unscheduled"] = True
+                except Exception as exc:
+                    if _api_status(exc) != 404:
+                        raise
+                    removed["already_gone"] = True
+            try:
+                client.delete_workout(int(workout_id))
+                removed["deleted"] = True
+            except Exception as exc:
+                if _api_status(exc) != 404:
+                    raise
+                removed["already_gone"] = True
+            return removed
+        except GarminError:
+            raise
+        except Exception as exc:
+            raise _publish_error(exc) from exc
+
     def cleanup_marker(
         self, workout: Any, workout_id: str, *, progress: dict, checkpoint: Callable
     ) -> None:
@@ -564,6 +597,11 @@ class MockGarminSession:
 
     def cleanup_marker(self, workout: Any, workout_id: str, *, progress: dict, checkpoint: Callable) -> None:
         checkpoint(dict(progress, cleanup=None), self._token_bundle)
+
+    def remove(self, workout_id: str, schedule_id: str | None) -> dict:
+        self._removed = getattr(self, "_removed", [])
+        self._removed.append((workout_id, schedule_id))
+        return {"unscheduled": bool(schedule_id), "deleted": True, "already_gone": False}
 
 
 def _login_error(exc: Exception) -> GarminError:
