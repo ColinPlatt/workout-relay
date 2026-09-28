@@ -222,8 +222,10 @@ def build_connector(
 
     @server.tool(description=(
         "Workouts currently scheduled on this person's Garmin calendar through "
-        "Workout Relay, newest date first. Read this before deleting anything, "
-        "and quote the title and date back so they can confirm."
+        "Workout Relay, newest date first. Covers running and strength alike; "
+        "each item carries its sport, or null if it was sent before that was "
+        "recorded. Read this before deleting anything, and quote the title, "
+        "sport and date back so they can confirm."
     ))
     def list_scheduled_workouts(limit: int = 50) -> str:
         user_id = _actor("plans:read")

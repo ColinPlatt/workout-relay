@@ -90,6 +90,7 @@ def scheduled_workouts(db: Session, user_id: str, limit: int = 100) -> list[dict
         {
             "workout_id": link.workout_key,
             "title": link.title,
+            "sport": link.sport,
             "scheduled_date": link.scheduled_date,
             "sent_at": link.updated_at.isoformat() if link.updated_at else None,
         }

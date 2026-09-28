@@ -51,6 +51,7 @@ const translations = {
     weight_on_bodyweight_exercise: "{path}: {exercise} is a bodyweight exercise; remove the weight.",
     generic_exercise_needs_reason: "{path}: naming only the category {category} shows less on the watch. Give a reason, or pick one of: {examples}",
     generic_exercise_used: "{path}: this step shows as {category} on the watch rather than a named movement ({reason}). Specific options: {examples}",
+    sport_running: "Running", sport_strength: "Strength",
     onGarmin: "On Garmin", scheduledWorkouts: "Scheduled workouts",
     scheduledHint: "Workouts sent from here. Deleting one removes it from your Garmin calendar and workout library.",
     noScheduled: "Nothing scheduled through Workout Relay yet.",
@@ -245,6 +246,7 @@ const translations = {
     weight_on_bodyweight_exercise: "{path} : {exercise} se fait au poids du corps ; retirez la charge.",
     generic_exercise_needs_reason: "{path} : n'indiquer que la catégorie {category} affiche moins sur la montre. Donnez une raison, ou choisissez parmi : {examples}",
     generic_exercise_used: "{path} : cette étape s'affiche comme {category} sur la montre plutôt qu'un mouvement nommé ({reason}). Options précises : {examples}",
+    sport_running: "Course", sport_strength: "Musculation",
     onGarmin: "Sur Garmin", scheduledWorkouts: "Séances programmées",
     scheduledHint: "Séances envoyées d'ici. En supprimer une la retire de votre calendrier et de votre bibliothèque Garmin.",
     noScheduled: "Aucune séance programmée via Workout Relay.",
@@ -613,7 +615,9 @@ async function loadWorkouts() {
   const data = await api("/api/v1/workouts");
   if (!data.items.length) { list.innerHTML = `<p class="muted">${escapeHtml(t("noScheduled"))}</p>`; return; }
   const today = new Date().toISOString().slice(0, 10);
-  list.innerHTML = data.items.map((item) => `<div class="key-row"><span><strong>${escapeHtml(item.title || item.workout_id)}</strong><small>${escapeHtml(item.scheduled_date || "")}</small></span><button type="button" data-workout-id="${escapeHtml(item.workout_id)}">${escapeHtml(t("deleteWorkout"))}</button></div>`).join("");
+  // Older workouts predate the sport column and simply omit it.
+  const detail = (item) => [item.scheduled_date, item.sport ? t(`sport_${item.sport}`) : ""].filter(Boolean).join(" \u00b7 ");
+  list.innerHTML = data.items.map((item) => `<div class="key-row"><span><strong>${escapeHtml(item.title || item.workout_id)}</strong><small>${escapeHtml(detail(item))}</small></span><button type="button" data-workout-id="${escapeHtml(item.workout_id)}">${escapeHtml(t("deleteWorkout"))}</button></div>`).join("");
   list.querySelectorAll("button").forEach((button) => button.addEventListener("click", async () => {
     const item = data.items.find((row) => row.workout_id === button.dataset.workoutId);
     const past = (item.scheduled_date || "") < today;

@@ -103,6 +103,9 @@ class WorkoutLink(Base):
     workout_key: Mapped[str] = mapped_column(String(160))
     # Carried so a listing can show what a workout is, not just its slug.
     title: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # Running or strength. Null on rows written before this column existed;
+    # they fill in when the workout is next sent, and are not backfilled.
+    sport: Mapped[str | None] = mapped_column(String(20), nullable=True)
     content_hash: Mapped[str] = mapped_column(String(71))
     garmin_workout_id: Mapped[str] = mapped_column(String(80))
     garmin_schedule_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
@@ -300,6 +303,7 @@ ADDED_COLUMNS = (
     ("garmin_connections", "visit_expires_at", "TIMESTAMP WITH TIME ZONE", None),
     ("plan_submissions", "kind", "VARCHAR(20)", "'plan'"),
     ("workout_links", "title", "VARCHAR(120)", None),
+    ("workout_links", "sport", "VARCHAR(20)", None),
 )
 
 

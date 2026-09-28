@@ -1373,6 +1373,7 @@ async def process_plan(
             if link:
                 action = "updated"
                 link.title = workout_data.get("title")
+                link.sport = workout_data.get("sport")
                 link.content_hash = digest
                 link.garmin_workout_id = published.workout_id
                 link.garmin_schedule_id = published.schedule_id
@@ -1384,6 +1385,7 @@ async def process_plan(
                         user_id=user_id,
                         workout_key=workout_data["id"],
                         title=workout_data.get("title"),
+                        sport=workout_data.get("sport"),
                         content_hash=digest,
                         garmin_workout_id=published.workout_id,
                         garmin_schedule_id=published.schedule_id,

@@ -405,3 +405,69 @@ async def test_a_workout_can_be_sent_again_after_being_deleted(worker_settings):
     with database.session() as db:
         assert db.scalar(select(WorkoutLink).where(WorkoutLink.user_id == user_id)) is not None
     database.engine.dispose()
+
+
+# --- sport on the listing --------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_a_strength_workout_is_listed_and_deletable_like_any_other(worker_settings):
+    """The delete path must not be running-only: a strength session is
+    scheduled the same way, so it has to be removable the same way."""
+    database = Database(worker_settings.database_url)
+    vault = GarminTokens(
+        TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes
+    )
+    database.initialize()
+    plan = {
+        "schema_version": 1, "plan_id": "strength-week", "title": "Strength week",
+        "workouts": [{
+            "id": "lower1", "date": "2099-01-05", "sport": "strength", "title": "Lower body",
+            "steps": [
+                {"type": "interval", "exercise": "ROMANIAN_DEADLIFT",
+                 "duration": {"type": "reps", "value": 10}, "weight_kg": 8},
+            ],
+        }],
+    }
+    with database.session() as db:
+        user = User(email="strength@example.com", password_hash="unused")
+        db.add(user)
+        db.flush()
+        user_id = user.id
+        db.add(GarminConnection(
+            user_id=user_id, encrypted_tokens=vault._vault.encrypt("test-token"),
+            retention="persistent",
+        ))
+        db.add(PlanSubmission(
+            user_id=user_id, plan_id=plan["plan_id"], title=plan["title"],
+            content=json.dumps(plan), status="queued",
+        ))
+        db.commit()
+
+    client = DeletableGarmin()
+    gateway = DeletingGateway(client)
+    await run_worker(database, vault, gateway)
+
+    with database.session() as db:
+        listed = scheduled_workouts(db, user_id)
+        assert [item["workout_id"] for item in listed] == ["lower1"]
+        assert listed[0]["sport"] == "strength"
+        assert listed[0]["title"] == "Lower body"
+        queue_deletion(db, database, user_id, ["lower1"])
+        db.commit()
+
+    await run_worker(database, vault, gateway)
+    assert client.delete_calls
+    with database.session() as db:
+        assert db.scalar(select(WorkoutLink).where(WorkoutLink.user_id == user_id)) is None
+    database.engine.dispose()
+
+
+def test_a_workout_sent_before_the_sport_was_recorded_still_lists(store):
+    """Existing rows are not backfilled, so a null sport has to be normal
+    rather than something the listing chokes on."""
+    database, vault = store
+    user_id = seed_links(database, vault, [("old", "2026-10-01")])
+    with database.session() as db:
+        item = scheduled_workouts(db, user_id)[0]
+    assert item["sport"] is None and item["workout_id"] == "old"
