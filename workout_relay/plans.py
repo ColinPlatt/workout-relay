@@ -10,6 +10,8 @@ from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
+from . import exercises
+
 _SCHEMA_DIR = Path(__file__).parent / "schemas"
 PLAN_SCHEMA = json.loads((_SCHEMA_DIR / "plan.schema.json").read_text())
 EXAMPLE_PLAN = json.loads((_SCHEMA_DIR / "example-plan.json").read_text())
@@ -48,10 +50,13 @@ def validate_plan(plan: Any) -> list[dict]:
             expanded += step.get("count", 1) * len(step.get("steps", [step]))
             simple_steps = step.get("steps", [step])
             for child_index, simple in enumerate(simple_steps):
-                target = simple["target"]
                 target_path = f"{prefix}.steps[{step_index}]"
                 if step["type"] == "repeat":
                     target_path += f".steps[{child_index}]"
+                if workout["sport"] == "strength":
+                    errors.extend(_strength_step_errors(simple, target_path))
+                    continue
+                target = simple["target"]
                 if target["type"] == "heart_rate" and target["low"] >= target["high"]:
                     errors.append(
                         {"path": f"{target_path}.target", "code": "target_order", "params": {}}
@@ -69,6 +74,111 @@ def validate_plan(plan: Any) -> list[dict]:
                 }
             )
     return errors
+
+
+def _strength_step_errors(step: dict, path: str) -> list[dict]:
+    """Check one strength step against Garmin's exercise catalogue.
+
+    A refusal always carries somewhere to go next — the exercises that were
+    probably meant, or the categories the name really belongs to — because an
+    assistant that is only told "invalid" tends to invent another name rather
+    than look one up.
+    """
+    errors: list[dict] = []
+    exercise = step.get("exercise")
+    category = step.get("category")
+
+    if step["type"] == "rest":
+        # A rest is the gap between efforts; Garmin carries no exercise on one.
+        if exercise or category:
+            errors.append({"path": path, "code": "rest_names_an_exercise", "params": {}})
+        if step.get("weight_kg") is not None:
+            errors.append({"path": path, "code": "rest_carries_weight", "params": {}})
+        if step["duration"]["type"] != "time":
+            errors.append({"path": f"{path}.duration", "code": "rest_must_be_timed", "params": {}})
+        return errors
+
+    if not exercise and not category:
+        return [{"path": path, "code": "no_exercise_named",
+                 "params": {"hint": "Name an exercise, or search with find_exercises."}}]
+
+    if not exercise:
+        # Category only: Garmin's own "somewhere in here" step. Allowed, but it
+        # tells the person less than a movement does, so it has to be asked for.
+        try:
+            resolved, _ = exercises.resolve_generic(category)
+        except exercises.Unknown as unknown:
+            return [{"path": f"{path}.category", "code": "unknown_category",
+                     "params": {"category": category,
+                                "suggestions": [item["category"] for item in unknown.suggestions]}}]
+        if not step.get("reason"):
+            errors.append({
+                "path": path,
+                "code": "generic_exercise_needs_reason",
+                "params": {
+                    "category": resolved,
+                    "examples": exercises.exercises_in(resolved)[:5],
+                },
+            })
+        return errors
+
+    try:
+        resolved_category, resolved_name = exercises.resolve(exercise, category)
+    except exercises.Unknown as unknown:
+        return [{"path": f"{path}.exercise", "code": "unknown_exercise",
+                 "params": {"exercise": exercise, "suggestions": unknown.suggestions}}]
+    except exercises.Ambiguous as ambiguous:
+        return [{"path": f"{path}.exercise", "code": "ambiguous_exercise",
+                 "params": {"exercise": ambiguous.name, "categories": ambiguous.candidates}}]
+    except exercises.WrongCategory as wrong:
+        return [{"path": f"{path}.category", "code": "wrong_category",
+                 "params": {"exercise": wrong.name, "category": wrong.category,
+                            "categories": wrong.candidates}}]
+
+    weight = step.get("weight_kg")
+    if weight and exercises.is_bodyweight(resolved_category, resolved_name):
+        errors.append({
+            "path": f"{path}.weight_kg",
+            "code": "weight_on_bodyweight_exercise",
+            "params": {"exercise": resolved_name},
+        })
+    return errors
+
+
+def plan_warnings(plan: Any) -> list[dict]:
+    """Things worth saying about a plan that is nonetheless valid.
+
+    Kept apart from errors so a discouraged-but-deliberate choice still
+    submits: the person gave a reason, and refusing it outright would make
+    the service unable to express sessions Garmin itself can.
+    """
+    warnings: list[dict] = []
+    if not isinstance(plan, dict):
+        return warnings
+    for index, workout in enumerate(plan.get("workouts", [])):
+        if not isinstance(workout, dict) or workout.get("sport") != "strength":
+            continue
+        for step_index, step in enumerate(workout.get("steps", [])):
+            children = step.get("steps", [step])
+            for child_index, simple in enumerate(children):
+                path = f"workouts[{index}].steps[{step_index}]"
+                if step.get("type") == "repeat":
+                    path += f".steps[{child_index}]"
+                if simple.get("exercise") or not simple.get("category"):
+                    continue
+                if not simple.get("reason"):
+                    continue
+                category = exercises.normalise(simple["category"])
+                warnings.append({
+                    "path": path,
+                    "code": "generic_exercise_used",
+                    "params": {
+                        "category": category,
+                        "reason": simple["reason"],
+                        "examples": exercises.exercises_in(category)[:5],
+                    },
+                })
+    return warnings
 
 
 def plan_schema() -> dict:
