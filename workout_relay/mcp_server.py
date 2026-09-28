@@ -70,6 +70,8 @@ def submission_json(item) -> dict:
         "id": item.id,
         "plan_id": item.plan_id,
         "title": item.title,
+        # "plan" or "deletion": a poller needs to tell the two jobs apart.
+        "kind": item.kind,
         "status": item.status,
         "result": json.loads(item.result),
         "created_at": item.created_at.isoformat() if item.created_at else None,

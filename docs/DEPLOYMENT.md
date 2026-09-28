@@ -138,6 +138,13 @@ token it ever issued. Nothing here reaches Garmin credentials or tokens.
 Tool schema changes do not propagate to already-connected clients. After
 changing a tool, expect people to reconnect the connector to see it.
 
+Deleting workouts requires `plans:delete`, which is deliberately outside the
+default scopes: a connection that could already send plans cannot delete until
+it is reconnected and the person approves the new line on the consent page.
+That is also what lets an assistant be configured to allow adding and editing
+while still asking before a delete. Startup adds the `plan_submissions.kind`
+and `workout_links.title` columns additively; existing rows keep their values.
+
 Completed-activity tools additionally require `activities:read`, explicitly
 shown on the English/French consent page. Existing access/refresh tokens and
 API keys retain their scopes. Remove and re-add old connectors (including

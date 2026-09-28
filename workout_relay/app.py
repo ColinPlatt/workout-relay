@@ -89,6 +89,10 @@ class LanguagePreference(BaseModel):
 
 class ApiKeyRequest(BaseModel):
     name: str = Field(min_length=1, max_length=80)
+    # plans:delete is deliberately absent: a key is a long-lived bearer secret
+    # in a script, and a leaked one must not be able to empty a calendar.
+    # Deleting is available to the signed-in browser and to an OAuth connector
+    # whose owner approved it, both of which involve a person at the time.
     scopes: list[Literal["plans:read", "plans:write", "activities:read"]] = Field(
         default_factory=lambda: ["plans:read", "plans:write"], min_length=1, max_length=3
     )
@@ -1734,6 +1738,8 @@ def submission_json(item: PlanSubmission) -> dict:
         "id": item.id,
         "plan_id": item.plan_id,
         "title": item.title,
+        # "plan" or "deletion": a poller needs to tell the two jobs apart.
+        "kind": item.kind,
         "status": item.status,
         "result": json.loads(item.result),
         "created_at": iso(item.created_at),

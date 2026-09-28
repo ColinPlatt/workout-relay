@@ -40,6 +40,13 @@ const translations = {
     assistantThreeTitle: "Sign in here and approve",
     assistantThreeBody: "Your assistant sends you back here to sign in once and approve. It never sees your Garmin or Workout Relay password.",
     connectedBadge: "Connected", clearHistory: "Clear history",
+    onGarmin: "On Garmin", scheduledWorkouts: "Scheduled workouts",
+    scheduledHint: "Workouts sent from here. Deleting one removes it from your Garmin calendar and workout library.",
+    noScheduled: "Nothing scheduled through Workout Relay yet.",
+    deleteWorkout: "Delete", deletingWorkout: "Deleting\u2026",
+    confirmDeleteWorkout: "Delete \u201c{title}\u201d from Garmin? It is removed from your calendar and your workout library. This cannot be undone.",
+    confirmDeletePast: "\u201c{title}\u201d is dated {date}, in the past. Deleting it rewrites training history you have already done. Delete anyway?",
+    workoutDeleted: "Workout deleted.", workoutsDeleting: "Deleting in the background\u2026",
     detailConnectedSince: "Connected since", detailLastSignIn: "Last Garmin sign-in",
     detailAccount: "Garmin account", detailStorage: "Session kept", detailExpires: "Expires",
     storageVisit: "This visit only", storageKeep: "Until you disconnect",
@@ -151,6 +158,12 @@ const translations = {
     error_garmin_mfa_failed: "The Garmin verification code was rejected. Start the connection again.",
     error_garmin_attempt_expired: "The Garmin login attempt expired. Start again.",
     error_garmin_not_connected: "Connect Garmin before sending a plan.", error_garmin_reauthentication_required: "Garmin requires you to reconnect.",
+    error_workout_not_found: "That workout is no longer tracked here. Refresh the list.",
+    error_workout_in_past: "That workout is dated in the past.",
+    error_no_workouts_named: "No workouts were named.", error_too_many_workouts: "Too many workouts at once.",
+    error_garmin_delete_in_progress: "A deletion of this workout is already running. Wait for it to finish.",
+    error_internal_delete_error: "The deletion could not be completed.",
+    error_scope_required: "This connection was not given permission for that. Reconnect and approve it.",
     error_garmin_upload_failed: "Garmin could not accept the workout. Try again later.", error_internal_upload_error: "The upload could not be completed.",
     error_garmin_outcome_unknown: "Garmin's response was unclear. Check Garmin Connect, then resend the exact same plan to check again. Do not change workout IDs: this could create duplicates. If this persists, contact the operator.",
     error_garmin_prior_upload_unresolved: "A previous version of this workout is unfinished. Resend that exact plan first, keeping its workout IDs, before making changes.",
@@ -207,6 +220,13 @@ const translations = {
     assistantThreeTitle: "Connectez-vous ici et approuvez",
     assistantThreeBody: "Votre assistant vous renvoie ici pour vous connecter une fois et approuver. Il ne voit jamais vos mots de passe Garmin ou Workout Relay.",
     connectedBadge: "Connecté", clearHistory: "Effacer l'historique",
+    onGarmin: "Sur Garmin", scheduledWorkouts: "Séances programmées",
+    scheduledHint: "Séances envoyées d'ici. En supprimer une la retire de votre calendrier et de votre bibliothèque Garmin.",
+    noScheduled: "Aucune séance programmée via Workout Relay.",
+    deleteWorkout: "Supprimer", deletingWorkout: "Suppression\u2026",
+    confirmDeleteWorkout: "Supprimer «\u00a0{title}\u00a0» de Garmin ? Elle est retirée de votre calendrier et de votre bibliothèque. Cette action est irréversible.",
+    confirmDeletePast: "«\u00a0{title}\u00a0» est datée du {date}, dans le passé. La supprimer réécrit un historique d'entraînement déjà réalisé. Supprimer quand même ?",
+    workoutDeleted: "Séance supprimée.", workoutsDeleting: "Suppression en arrière-plan\u2026",
     detailConnectedSince: "Connecté depuis", detailLastSignIn: "Dernière connexion Garmin",
     detailAccount: "Compte Garmin", detailStorage: "Session conservée", detailExpires: "Expire",
     storageVisit: "Cette visite uniquement", storageKeep: "Jusqu'à déconnexion",
@@ -318,6 +338,12 @@ const translations = {
     error_garmin_mfa_failed: "Le code de vérification Garmin a été refusé. Recommencez la connexion.",
     error_garmin_attempt_expired: "La tentative de connexion Garmin a expiré. Recommencez.",
     error_garmin_not_connected: "Connectez Garmin avant d'envoyer un plan.", error_garmin_reauthentication_required: "Garmin demande une nouvelle connexion.",
+    error_workout_not_found: "Cette séance n'est plus suivie ici. Actualisez la liste.",
+    error_workout_in_past: "Cette séance est datée dans le passé.",
+    error_no_workouts_named: "Aucune séance indiquée.", error_too_many_workouts: "Trop de séances à la fois.",
+    error_garmin_delete_in_progress: "Une suppression de cette séance est déjà en cours. Attendez qu'elle se termine.",
+    error_internal_delete_error: "La suppression n'a pas pu être terminée.",
+    error_scope_required: "Cette connexion n'a pas reçu cette permission. Reconnectez-vous et approuvez-la.",
     error_garmin_upload_failed: "Garmin n'a pas accepté la séance. Réessayez plus tard.", error_internal_upload_error: "L'import n'a pas pu être terminé.",
     error_garmin_outcome_unknown: "La réponse de Garmin est incertaine. Vérifiez Garmin Connect, puis renvoyez exactement le même plan pour vérifier à nouveau. Ne changez pas les identifiants : cela pourrait créer des doublons. Si le problème persiste, contactez l'opérateur.",
     error_garmin_prior_upload_unresolved: "Une version précédente de cette séance est inachevée. Renvoyez d'abord ce plan exact, avec les mêmes identifiants, avant de le modifier.",
@@ -375,7 +401,7 @@ function applyLanguage(language, persist = false) {
   }
   setAuthMode(state.authMode);
   if (state.garmin) renderGarminStatus(state.garmin);
-  if (state.user) { loadHistory(); loadKeys(); loadConnections(); }
+  if (state.user) { loadHistory(); loadWorkouts(); loadKeys(); loadConnections(); }
 }
 
 function csrfToken() {
@@ -433,7 +459,7 @@ function showDashboard(user) {
   state.user = user;
   $("#auth-view").classList.add("hidden"); $("#dashboard").classList.remove("hidden"); $("#logout").classList.remove("hidden");
   $("#account-label").textContent = user.email;
-  Promise.all([loadGarmin(), loadHistory(), loadKeys(), loadConnections()]);
+  Promise.all([loadGarmin(), loadHistory(), loadWorkouts(), loadKeys(), loadConnections()]);
 }
 function showAuth() {
   document.body.classList.add("auth-only");
@@ -542,6 +568,46 @@ async function loadHistory() {
     else if (item.status === "completed" && item.result?.counts) detail = t("historyCounts", item.result.counts);
     return `<div class="history-row"><span class="history-main"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.plan_id)}</small></span><span class="status-pill ${item.status === "failed" ? "failed" : ""}">${escapeHtml(t(`status_${item.status}`))}</span><span>${new Intl.DateTimeFormat(state.language, { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.created_at))}</span>${detail ? `<p class="history-detail ${item.status === "failed" ? "error" : ""}">${escapeHtml(detail)}</p>` : ""}</div>`;
   }).join("");
+}
+
+async function loadWorkouts() {
+  const list = $("#workout-list");
+  const data = await api("/api/v1/workouts");
+  if (!data.items.length) { list.innerHTML = `<p class="muted">${escapeHtml(t("noScheduled"))}</p>`; return; }
+  const today = new Date().toISOString().slice(0, 10);
+  list.innerHTML = data.items.map((item) => `<div class="key-row"><span><strong>${escapeHtml(item.title || item.workout_id)}</strong><small>${escapeHtml(item.scheduled_date || "")}</small></span><button type="button" data-workout-id="${escapeHtml(item.workout_id)}">${escapeHtml(t("deleteWorkout"))}</button></div>`).join("");
+  list.querySelectorAll("button").forEach((button) => button.addEventListener("click", async () => {
+    const item = data.items.find((row) => row.workout_id === button.dataset.workoutId);
+    const past = (item.scheduled_date || "") < today;
+    const title = item.title || item.workout_id;
+    // A past session is history the person has already run, so it gets its
+    // own warning rather than the same one as a future session.
+    if (!confirm(past ? t("confirmDeletePast", { title, date: item.scheduled_date }) : t("confirmDeleteWorkout", { title }))) return;
+    setBusy(button, true);
+    try {
+      await api("/api/v1/workouts/delete", {
+        method: "POST",
+        body: JSON.stringify({ workout_ids: [item.workout_id], include_past: past }),
+      });
+      showToast(t("workoutsDeleting"));
+      // The worker does the Garmin call, so the row goes when it reports back.
+      await pollDeletion();
+    } catch (error) { showToast(errorText(error)); setBusy(button, false); }
+    await Promise.all([loadWorkouts(), loadHistory()]);
+  }));
+}
+
+async function pollDeletion() {
+  for (let attempt = 0; attempt < 15; attempt += 1) {
+    await new Promise((resolve) => window.setTimeout(resolve, 1000));
+    const data = await api("/api/v1/plans");
+    const job = data.items.find((item) => item.kind === "deletion");
+    if (!job || job.status === "completed" || job.status === "failed") {
+      if (job?.status === "failed") showToast(errorText({ code: job.result?.code }));
+      else showToast(t("workoutDeleted"));
+      return;
+    }
+  }
 }
 
 async function loadConnections() {
@@ -691,6 +757,7 @@ $("#upload-plan").addEventListener("click", async (event) => {
   finally { setBusy(button, false); }
 });
 $("#refresh-history").addEventListener("click", loadHistory);
+$("#refresh-workouts").addEventListener("click", loadWorkouts);
 $("#clear-history").addEventListener("click", async (event) => {
   if (!confirm(t("confirmClearHistory"))) return;
   const button = event.currentTarget;

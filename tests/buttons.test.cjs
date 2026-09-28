@@ -59,3 +59,76 @@ for (const consented of [false, true]) {
     assert.equal(checkbox.checked, false);
   });
 }
+
+// Deleting a workout is irreversible in Garmin, so the row's button must not
+// send anything until the person has confirmed, and a past date has to be
+// asked for explicitly rather than smuggled through.
+function loadWorkoutsContext({ items, agree }) {
+  const calls = { posted: [], confirmed: [] };
+  const list = {
+    innerHTML: "",
+    querySelectorAll() {
+      const ids = [...String(list.innerHTML).matchAll(/data-workout-id="([^"]+)"/g)].map((m) => m[1]);
+      return ids.map((id) => ({
+        dataset: { workoutId: id },
+        textContent: "Delete",
+        disabled: false,
+        addEventListener: (_, callback) => { this.handlers = (this.handlers || []).concat(callback); },
+      }));
+    },
+  };
+  const context = {
+    $: () => list,
+    api: async (path, options) => {
+      if (options?.method === "POST") { calls.posted.push(JSON.parse(options.body)); return {}; }
+      return { items };
+    },
+    t: (key, params) => { if (key.startsWith("confirm")) calls.confirmed.push({ key, params }); return key; },
+    confirm: (message) => { calls.message = message; return agree; },
+    escapeHtml: (value) => String(value),
+    setBusy() {}, showToast() {}, errorText: () => "Error",
+    pollDeletion: async () => {}, loadHistory: async () => {},
+    Promise, Date, window: { setTimeout },
+  };
+  return { context, list, calls };
+}
+
+for (const agree of [false, true]) {
+  test(`a workout is deleted only after confirmation: ${agree}`, async () => {
+    const source = fs.readFileSync("workout_relay/static/app.js", "utf8");
+    const fn = source.match(/async function loadWorkouts\(\) \{[\s\S]*?\n\}/)[0];
+    const items = [{ workout_id: "w1", title: "Easy 30", scheduled_date: "2099-01-01" }];
+    const { context, list, calls } = loadWorkoutsContext({ items, agree });
+    vm.runInNewContext(`${fn}\nglobalThis.__run = loadWorkouts;`, context);
+    await context.__run();
+    const buttons = list.querySelectorAll("button");
+    assert.equal(buttons.length, 1);
+    // Re-attach: querySelectorAll builds fresh objects, so drive the real one.
+    let handler;
+    list.querySelectorAll = () => [{
+      dataset: { workoutId: "w1" }, textContent: "Delete", disabled: false,
+      addEventListener: (_, callback) => { handler = callback; },
+    }];
+    await context.__run();
+    await handler();
+    assert.equal(calls.posted.length, agree ? 1 : 0);
+    if (agree) assert.deepEqual(calls.posted[0], { workout_ids: ["w1"], include_past: false });
+  });
+}
+
+test("a past workout is deleted with include_past, under its own warning", async () => {
+  const source = fs.readFileSync("workout_relay/static/app.js", "utf8");
+  const fn = source.match(/async function loadWorkouts\(\) \{[\s\S]*?\n\}/)[0];
+  const items = [{ workout_id: "old", title: "Long run", scheduled_date: "2020-01-01" }];
+  const { context, list, calls } = loadWorkoutsContext({ items, agree: true });
+  vm.runInNewContext(`${fn}\nglobalThis.__run = loadWorkouts;`, context);
+  let handler;
+  list.querySelectorAll = () => [{
+    dataset: { workoutId: "old" }, textContent: "Delete", disabled: false,
+    addEventListener: (_, callback) => { handler = callback; },
+  }];
+  await context.__run();
+  await handler();
+  assert.deepEqual(calls.posted[0], { workout_ids: ["old"], include_past: true });
+  assert.equal(calls.confirmed.at(-1).key, "confirmDeletePast");
+});

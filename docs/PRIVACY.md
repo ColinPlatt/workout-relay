@@ -52,6 +52,16 @@ The exact periods in force are served at `/api/v1/policy` and shown in the
 privacy dialog, so what you read is the configuration rather than prose that
 could drift from it.
 
+### Deleting workouts
+
+An assistant can delete a workout only with the separate `plans:delete`
+permission, which is never granted by default. Only workouts Workout Relay sent
+can be deleted: requests are resolved against our own records, so a Garmin id
+from a caller is refused and a workout you created yourself in Garmin Connect
+cannot be reached. Deleting removes the calendar entry and the workout from your
+Garmin library, and removes our record of it. It cannot be undone, and a
+workout dated in the past is refused unless deletion is asked for explicitly.
+
 ### Activity data
 
 Reading completed activities requires a separate `activities:read` permission
@@ -121,6 +131,18 @@ des plans sans vous.
 
 Dans les deux cas, votre e-mail, votre mot de passe et vos codes MFA Garmin ne
 sont jamais conservés. Pour changer de choix, déconnectez puis reconnectez.
+
+### Suppression de séances
+
+Un assistant ne peut supprimer une séance qu'avec l'autorisation distincte
+`plans:delete`, jamais accordée par défaut. Seules les séances envoyées par
+Workout Relay peuvent être supprimées : les demandes sont résolues à partir de
+nos propres enregistrements, donc un identifiant Garmin fourni par un appelant
+est refusé et une séance que vous avez créée vous-même dans Garmin Connect reste
+hors d'atteinte. La suppression retire l'entrée du calendrier et la séance de
+votre bibliothèque Garmin, ainsi que notre enregistrement. Elle est
+irréversible, et une séance datée dans le passé est refusée sauf demande
+explicite.
 
 ### Données d'activité
 

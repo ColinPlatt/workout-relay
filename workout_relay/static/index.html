@@ -177,6 +177,12 @@
           <div class="card-heading"><div><p class="step" data-i18n="recent">Recent</p><h2 data-i18n="planHistory">Plan history</h2></div><span class="history-actions"><button id="clear-history" class="button ghost" type="button" data-i18n="clearHistory">Clear history</button><button id="refresh-history" class="icon-button" type="button" aria-label="Refresh" data-i18n-aria="refresh">↻</button></span></div>
           <div id="history-list" class="history-list"><p class="muted" data-i18n="noPlans">No plans submitted yet.</p></div>
         </div>
+
+        <div class="card history-card">
+          <div class="card-heading"><div><p class="step" data-i18n="onGarmin">On Garmin</p><h2 data-i18n="scheduledWorkouts">Scheduled workouts</h2></div><span class="history-actions"><button id="refresh-workouts" class="icon-button" type="button" aria-label="Refresh" data-i18n-aria="refresh">↻</button></span></div>
+          <p class="hint" data-i18n="scheduledHint">Workouts sent from here. Deleting one removes it from your Garmin calendar and workout library.</p>
+          <div id="workout-list" class="history-list"><p class="muted" data-i18n="noScheduled">Nothing scheduled through Workout Relay yet.</p></div>
+        </div>
       </section>
 
       <section id="section-automation" class="dashboard-section hidden">

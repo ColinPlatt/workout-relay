@@ -735,3 +735,34 @@ async def test_the_consent_screen_names_deletion_in_both_languages(connector_set
                 )
                 assert phrase in page.text.lower(), language
                 assert "plans:delete" not in page.text  # never the raw scope name
+
+
+@pytest.mark.anyio
+async def test_an_api_key_can_never_be_given_permission_to_delete(connector_settings):
+    """A key is a long-lived secret in a script; a leaked one must not be able
+    to empty a calendar. Deleting stays with the browser and with a connector
+    a person approved."""
+    app = create_app(connector_settings)
+    async with app.router.lifespan_context(app):
+        async with await app_client(app) as client:
+            csrf = await register_account(client)
+            await connect_garmin(client, csrf)
+            refused = await client.post(
+                "/api/v1/api-keys",
+                json={"name": "script", "scopes": ["plans:write", "plans:delete"]},
+                headers={"X-CSRF-Token": csrf},
+            )
+            assert refused.status_code == 422
+
+            key = (await client.post(
+                "/api/v1/api-keys",
+                json={"name": "script", "scopes": ["plans:read", "plans:write"]},
+                headers={"X-CSRF-Token": csrf},
+            )).json()
+            blocked = await client.post(
+                "/api/v1/workouts/delete",
+                json={"workout_ids": ["w1"]},
+                headers={"Authorization": f"Bearer {key['token']}"},
+            )
+            assert blocked.status_code == 403
+            assert blocked.json()["detail"]["code"] == "scope_required"
