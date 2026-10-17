@@ -444,12 +444,17 @@ async def test_ui_and_llm_instructions_both_carry_the_connector_address(connecto
             script = (await client.get("/static/app.js")).text
             assert 'id="connector-url"' in page and "connectAssistant" in page
             assert "claudeStep1" in script and "chatgptStep3" in script
-            # The key section no longer claims Claude can use a bearer key.
-            assert "Claude cannot use a bearer key" in page
+            # Keys are for scripts; custom GPTs can no longer be created.
+            assert "Assistants do not use keys" in page and "custom GPT" not in page
+            assert "custom GPT" not in script and "GPT personnalisé" not in script
+            # A free ChatGPT plan has no custom connectors, a free Claude one does.
+            assert "free Claude account" in page and "compte Claude gratuit" in script
 
             for language, marker in (("en", "Add custom connector"), ("fr", "connecteur personnalisé")):
                 info = (await client.get(f"/api/v1/plan-format?language={language}")).json()
                 assert info["connector"]["url"] == "http://localhost:8000/mcp/"
+                assert any("Claude" in step and ("free" in step or "gratuit" in step)
+                           for step in info["connector"]["setup"])
                 assert any(marker in step for step in info["connector"]["setup"])
                 assert "submit_plan" in info["connector"]["preferred"]
 
