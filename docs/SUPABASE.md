@@ -84,11 +84,14 @@ the dump, so nothing written to Neon afterwards is lost.
 1. Let active uploads finish, then **pause** the Northflank service (or scale
    it to 0 instances) so nothing writes to Neon. Do not delete it. Confirm the
    old Render service is still suspended too.
-2. Dump and restore with a PostgreSQL 17 client. Supabase runs 17; the client
-   must be at least the Neon server's major version (check with
-   `select version();` in Neon's SQL editor). The `postgres:17` image avoids a
-   local install. Secrets are read from the terminal, not typed into the
-   command line, so they stay out of shell history:
+2. Dump and restore with a client whose major version is at least the Neon
+   server's (check with `select version();` in Neon's SQL editor); `pg_dump`
+   refuses an older client. The commands below use the `postgres:18` image,
+   which also avoids a local install. Neon defaults to 18 while Supabase runs
+   17; restoring this application's 18 dump into 17 was rehearsed and gives an
+   identical schema, since it uses no 18-only features. Secrets are read from
+   the terminal, not typed into the command line, so they stay out of shell
+   history:
 
    ```bash
    read -rs -p 'Neon DIRECT (unpooled) URL: ' NEON_URL; echo
@@ -97,7 +100,7 @@ the dump, so nothing written to Neon afterwards is lost.
    WORK=$(mktemp -d)   # outside the repository; the dump holds account data
 
    docker run --rm -e NEON_URL -e SUPABASE_URL -v "$WORK":/work -w /work \
-     postgres:17 bash -euo pipefail -c '
+     postgres:18 bash -euo pipefail -c '
        pg_dump --format=custom --no-owner --no-privileges --schema=public \
          --file=relay.dump "$NEON_URL"
        # Supabase already has the public schema, and postgres does not own it.
@@ -126,7 +129,7 @@ the dump, so nothing written to Neon afterwards is lost.
    order by 1;
    SQL
    for DB in NEON_URL SUPABASE_URL; do
-     docker run --rm -e "$DB" -v "$WORK":/work postgres:17 \
+     docker run --rm -e "$DB" -v "$WORK":/work postgres:18 \
        sh -c "psql -qAt \"\$$DB\" -f /work/counts.sql" > "$WORK/$DB.txt"
    done
    diff "$WORK/NEON_URL.txt" "$WORK/SUPABASE_URL.txt" && echo counts match
@@ -142,7 +145,7 @@ the dump, so nothing written to Neon afterwards is lost.
    where c.relnamespace = 'public'::regnamespace and c.relkind = 'r'
      and has_table_privilege(r.rolname, c.oid, 'SELECT');
    SQL
-   docker run --rm -e SUPABASE_URL -v "$WORK":/work postgres:17 \
+   docker run --rm -e SUPABASE_URL -v "$WORK":/work postgres:18 \
      sh -c 'psql -qAt "$SUPABASE_URL" -f /work/api_grants.sql'
    ```
 
