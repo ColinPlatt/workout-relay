@@ -33,16 +33,16 @@ Supabase Free limits that matter here:
 - A project with too little database activity over 7 days is paused. Supabase
   emails a warning first; opening the project dashboard or normal app use
   prevents it. A paused project can be resumed from the dashboard for 90 days,
-  with data intact; after that it cannot. A Render free instance that nobody
-  visits for a week does not keep the database awake.
+  with data intact; after that it cannot. The always-on Northflank service's
+  startup and worker queries help, but a week with no sign-ins or uploads may
+  still count as low activity; watch for the warning email.
 - 500 MB of database space, and at most two active Free projects.
 - No downloadable backups on Free. Keep your own encrypted `pg_dump` if you
   want a restorable copy.
 
 ## 1. Project and hardening
 
-The project `workout-relay` exists in eu-central-1 (Frankfurt, the same region
-as the Render service), on the Free plan.
+The project `workout-relay` exists in eu-central-1 (Frankfurt), on the Free plan.
 
 Supabase exposes the `public` schema through its Data API, and by default
 grants the `anon` and `authenticated` API roles full access to every new table
@@ -81,8 +81,9 @@ Percent-encode any special characters in the password, and append
 Pick a quiet window, then follow these steps in order. They stop writes before
 the dump, so nothing written to Neon afterwards is lost.
 
-1. Let active uploads finish, then **suspend** the web service (Render:
-   *Settings → Suspend Web Service*). Do not delete it.
+1. Let active uploads finish, then **pause** the Northflank service (or scale
+   it to 0 instances) so nothing writes to Neon. Do not delete it. Confirm the
+   old Render service is still suspended too.
 2. Dump and restore with a PostgreSQL 17 client. Supabase runs 17; the client
    must be at least the Neon server's major version (check with
    `select version();` in Neon's SQL editor). The `postgres:17` image avoids a
@@ -145,9 +146,9 @@ the dump, so nothing written to Neon afterwards is lost.
      sh -c 'psql -qAt "$SUPABASE_URL" -f /work/api_grants.sql'
    ```
 
-5. In the web service's secret settings, replace `DATABASE_URL` with the
-   Supabase session pooler URL. **Leave `MASTER_ENCRYPTION_KEY` untouched.**
-   Resume the service.
+5. In the Northflank service's runtime secrets, replace `DATABASE_URL` with
+   the Supabase session pooler URL. **Leave `MASTER_ENCRYPTION_KEY`
+   untouched.** Resume the service (or scale it back to 1 instance).
 6. Delete the working copy: `rm -rf "$WORK"; unset NEON_URL SUPABASE_URL`.
 
 ## 3. Verify
@@ -180,8 +181,8 @@ it. Delete any local dump at the same time.
 
 ## Rollback
 
-Suspend the service, set `DATABASE_URL` back to the Neon direct URL, and
-resume. Anything written to Supabase after cutover is not in Neon; dump and
+Pause the Northflank service, set `DATABASE_URL` back to the Neon direct URL,
+and resume. Anything written to Supabase after cutover is not in Neon; dump and
 restore in the opposite direction if that matters.
 
 ## References (checked 2026-10-17)
