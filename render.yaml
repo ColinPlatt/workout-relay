@@ -18,10 +18,12 @@ services:
         value: live
       - key: COOKIE_SECURE
         value: "true"
-      # Paste the DIRECT connection string of an external PostgreSQL database,
-      # not a pooled one: upload ownership uses session advisory locks, which a
-      # transaction pooler silently breaks. Render's own free Postgres is not
-      # an option here, because it is deleted 30 days after creation.
+      # Paste the connection string of an external PostgreSQL database: a
+      # direct connection or a session-mode pooler (Supabase: session pooler,
+      # port 5432), never a transaction pooler (Supabase port 6543). Upload
+      # ownership uses session advisory locks, which a transaction pooler
+      # silently breaks. Render's own free Postgres is not an option here,
+      # because it is deleted 30 days after creation. See docs/SUPABASE.md.
       - key: DATABASE_URL
         sync: false
       # A randomized 256-bit base64 value, which is exactly the key format the

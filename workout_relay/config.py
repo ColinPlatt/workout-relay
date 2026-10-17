@@ -85,8 +85,8 @@ class Settings:
             raise ValueError(
                 "DATABASE_URL points at a transaction pooler, which silently "
                 "breaks the session advisory lock that keeps one uploader. Use "
-                "the direct connection string (Neon calls it "
-                "DATABASE_URL_UNPOOLED)."
+                "a direct connection or a session-mode pooler (Supabase's "
+                "session pooler on port 5432, or Neon's DATABASE_URL_UNPOOLED)."
             )
         if not self.master_encryption_key:
             raise ValueError("MASTER_ENCRYPTION_KEY is required")
@@ -117,8 +117,13 @@ def _sqlalchemy_url(url: str) -> str:
 
 def _looks_pooled(url: str) -> bool:
     """Spot the connection strings that break session-scoped advisory locks."""
-    host = url.split("@")[-1].split("/")[0].lower()
-    return "-pooler." in host or "pgbouncer" in host
+    host = url.split("@")[-1].split("/")[0].split("?")[0].lower()
+    name, _, port = host.partition(":")
+    # Supabase serves transaction mode on 6543, from both its shared pooler and
+    # the dedicated PgBouncer. Its session pooler on 5432 keeps one server
+    # connection per client for the client's lifetime, so the lock holds.
+    supabase = name.endswith((".supabase.com", ".supabase.co"))
+    return "-pooler." in name or "pgbouncer" in name or (supabase and port == "6543")
 
 
 def _development_key(database_url: str) -> str:

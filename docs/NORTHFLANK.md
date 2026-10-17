@@ -49,7 +49,9 @@ is complete. Do not point a throwaway preview at the live database.
 Copy these two secret values **privately from the current Render environment**
 into Northflank's runtime secret settings:
 
-- `DATABASE_URL`: the exact existing **direct/unpooled** PostgreSQL URL.
+- `DATABASE_URL`: the exact existing PostgreSQL URL: a direct connection or a
+  session-mode pooler (Supabase session pooler on port 5432), never a
+  transaction pooler. See the [database requirements](DEPLOYMENT.md#database-requirements).
 - `MASTER_ENCRYPTION_KEY`: the exact existing key. Never generate a replacement;
   existing Garmin connections are encrypted with it.
 
@@ -129,7 +131,9 @@ Garmin sessions are memory-only and cannot be migrated or survive restarts.
    hosts serving normal traffic indefinitely.
 
 An always-on application does not imply a database can never idle or restart.
-The current database provider's free-tier limits still apply.
+The current database provider's free-tier limits still apply. On Supabase Free,
+an always-on app's own queries help avoid the 7-day inactivity pause, but they
+are not a guarantee.
 
 ## Rollback
 

@@ -43,6 +43,8 @@ def test_platform_postgres_urls_use_installed_psycopg_driver(monkeypatch, url):
     [
         "ep-soft-breeze-b2pvm67q-pooler.c-6.eu-central-1.aws.neon.tech",
         "pgbouncer.internal:6432",
+        "aws-0-eu-central-1.pooler.supabase.com:6543",
+        "db.abcdefghijklmnopqrst.supabase.co:6543",
     ],
 )
 def test_pooled_connection_strings_are_refused(settings, host):
@@ -51,6 +53,14 @@ def test_pooled_connection_strings_are_refused(settings, host):
         replace(settings, database_url=f"postgresql+psycopg://user:pw@{host}/relay").validate()
 
 
-def test_direct_connection_strings_are_accepted(settings):
-    direct = "postgresql+psycopg://user:pw@ep-soft-breeze-b2pvm67q.c-6.eu-central-1.aws.neon.tech/relay"
-    replace(settings, database_url=direct).validate()
+@pytest.mark.parametrize(
+    "host",
+    [
+        "ep-soft-breeze-b2pvm67q.c-6.eu-central-1.aws.neon.tech",
+        # Supabase's session pooler holds one server connection per client.
+        "aws-0-eu-central-1.pooler.supabase.com:5432",
+        "db.abcdefghijklmnopqrst.supabase.co:5432",
+    ],
+)
+def test_direct_and_session_mode_connection_strings_are_accepted(settings, host):
+    replace(settings, database_url=f"postgresql+psycopg://user:pw@{host}/relay").validate()

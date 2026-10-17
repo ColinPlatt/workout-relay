@@ -12,3 +12,4 @@ data/
 *.upload.lock
 .neon
 .env.local
+*.dump

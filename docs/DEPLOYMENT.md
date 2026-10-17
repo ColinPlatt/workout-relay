@@ -1,7 +1,9 @@
 # Deployment
 
 For the application-host migration with the existing database and encryption
-key preserved, follow [Render → Northflank](NORTHFLANK.md). Preparation does not
+key preserved, follow [Render → Northflank](NORTHFLANK.md). To move the
+database from Neon to Supabase with the key preserved, follow
+[Neon → Supabase](SUPABASE.md). Preparation does not
 mean the new service is deployed; leave Render intact until cutover checks pass.
 
 ## Development or private demonstration
@@ -11,7 +13,8 @@ data on a named volume. No Garmin requests are made.
 
 ## Live deployment checklist
 
-1. Use managed Postgres and a single web process for the initial release.
+1. Use managed PostgreSQL that meets the [database requirements](#database-requirements)
+   and a single web process for the initial release.
 2. Set `APP_ENV=production`, `GARMIN_MODE=live`, an HTTPS `BASE_URL`, and
    `COOKIE_SECURE=true`.
 3. For a new installation, generate a Fernet `MASTER_ENCRYPTION_KEY` and store
@@ -34,8 +37,8 @@ application process runs a database-backed upload worker and lets mobile clients
 poll job status. A dedicated PostgreSQL connection holds a session advisory lock
 throughout each submission (SQLite development uses a file lock). Only its owner
 can recover interrupted `processing` jobs. Overlapping Render releases therefore
-cannot upload concurrently. Use a direct PostgreSQL connection, not a
-transaction-pooling proxy. Shutdown drains the active thread before releasing
+cannot upload concurrently. Use a direct PostgreSQL connection or a
+session-mode pooler, never a transaction-pooling proxy. Shutdown drains the active thread before releasing
 ownership; after a forced kill the next owner recovers from the operation journal.
 
 The additive `workout_operations` table is created automatically. It stores
@@ -95,6 +98,33 @@ container.
 
 The Docker image remains portable and accepts any PostgreSQL SQLAlchemy URL;
 the prepared configuration below is the supported first deployment path.
+
+## Database requirements
+
+Production database must be PostgreSQL-compatible and support session-scoped
+PostgreSQL advisory locks. Use a direct PostgreSQL connection or a session-mode
+pooler. Transaction-mode poolers are unsupported.
+
+A transaction pooler gives each transaction whichever server session is free,
+so the session that took the upload lock is not the one that later checks or
+releases it, and two uploaders can run at once without any error. Startup
+refuses the pooled URLs it recognises: Neon `-pooler` hosts, PgBouncer hosts,
+and Supabase's transaction port 6543. Other providers' transaction poolers are
+not detected; check the mode yourself. SQLite-style hosted databases (D1,
+Turso and similar) have no advisory locks and are not supported.
+
+Supabase Free is the recommended hosted option. Its connection modes:
+
+| Connection | Port | Status |
+| --- | --- | --- |
+| Session pooler (`….pooler.supabase.com`) | `5432` | Recommended; reachable over IPv4 |
+| Direct PostgreSQL (`db.<project-ref>.supabase.co`) | `5432` | Supported; IPv6 only on Free |
+| Transaction pooler | `6543` | Unsupported; refused at startup |
+
+Supabase grants its Data API roles access to new `public` tables by default.
+Revoke that before the first start, and note that Free projects pause after a
+week of low activity; both are covered in [Neon → Supabase](SUPABASE.md). Any
+other PostgreSQL provider with a direct or session-mode connection also works.
 
 ## Garmin sign-in is slow by design
 
@@ -173,19 +203,22 @@ supplies HTTPS and `RENDER_EXTERNAL_URL`, and generates `MASTER_ENCRYPTION_KEY`
 as a randomized 256-bit base64 value, which is the key format the token vault
 expects. The database is not declared in the blueprint: Render deletes a free
 PostgreSQL database 30 days after creation, along with every account and Garmin
-token in it. Host it somewhere whose free tier does not expire, such as Neon,
-and paste its connection string when Render prompts for `DATABASE_URL`.
+token in it. Host it separately, on Supabase Free or another provider meeting
+the [database requirements](#database-requirements), and paste its connection
+string when Render prompts for `DATABASE_URL`.
 
-**Use the direct connection string, not a pooled one.** Providers that offer a
-transaction pooler (Neon's `-pooler` host, PgBouncer and similar) break session
-advisory locks silently, which is how a single uploader is enforced. Uploads
-would then overlap between overlapping deployments. Startup refuses a pooled
-URL rather than failing quietly later.
+**Use the session pooler or direct connection string, never a transaction
+pooler.** On Supabase that is the session pooler on port 5432 (Render has no
+IPv6 egress, so the direct host is unreachable from it on Free). Transaction
+poolers break session advisory locks silently, which is how a single uploader is
+enforced; uploads would then overlap between overlapping deployments. Startup
+refuses the pooled URLs it recognises rather than failing quietly later.
 
-Note the trap: `neon link` writes both endpoints into `.env.local`, and the one
-named plain `DATABASE_URL` there is the **pooled** endpoint. The value to paste
-into Render is `DATABASE_URL_UNPOOLED`. That file holds live credentials and is
-gitignored; the application does not read it, since it loads `.env`.
+If you stay on Neon, note the trap: `neon link` writes both endpoints into
+`.env.local`, and the one named plain `DATABASE_URL` there is the **pooled**
+endpoint. The value to use is `DATABASE_URL_UNPOOLED`. That file holds live
+credentials and is gitignored; the application does not read it, since it
+loads `.env`.
 
 What the free plan costs you, in behaviour rather than money:
 
