@@ -245,9 +245,9 @@ def assistant_instructions(language: str = "en", base_url: str = "") -> dict:
                 "the connection, so no key is needed."
             ),
             "setup": [
-                "Claude: Settings, then Connectors, then Add custom connector, and paste this address.",
+                "Claude (any plan; a free account allows one custom connector): Settings, then Connectors, then Add custom connector, and paste this address.",
                 "ChatGPT (paid plans): Settings, then Security and login, turn on Developer mode, then add this address as a custom connector.",
-                "ChatGPT (free plans): custom connectors are unavailable; upload the plan on the website instead.",
+                "ChatGPT (free plans): custom connectors are unavailable. A free Claude account allows one, so suggest Claude; otherwise paste the plan on the website.",
                 "The person signs in to Workout Relay once and approves; their Garmin password is never shared.",
             ],
         },
@@ -261,9 +261,9 @@ def assistant_instructions(language: str = "en", base_url: str = "") -> dict:
                 "compte qui a approuvé la connexion ; aucune clé n'est requise."
             ),
             "setup": [
-                "Claude : Réglages, puis Connecteurs, puis Ajouter un connecteur personnalisé, et collez cette adresse.",
+                "Claude (toutes les offres ; un compte gratuit autorise un connecteur personnalisé) : Réglages, puis Connecteurs, puis Ajouter un connecteur personnalisé, et collez cette adresse.",
                 "ChatGPT (offres payantes) : Réglages, puis Sécurité et connexion, activez le mode développeur, puis ajoutez cette adresse comme connecteur personnalisé.",
-                "ChatGPT (offres gratuites) : les connecteurs personnalisés ne sont pas disponibles ; importez le plan sur le site.",
+                "ChatGPT (offres gratuites) : les connecteurs personnalisés ne sont pas disponibles. Un compte Claude gratuit en autorise un : proposez Claude, sinon collez le plan sur le site.",
                 "La personne se connecte une fois à Workout Relay et approuve ; son mot de passe Garmin n'est jamais partagé.",
             ],
         },

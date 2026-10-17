@@ -232,7 +232,7 @@
               <ol class="workflow">
                 <li data-i18n="claudeStep1">Open Settings, then Connectors, and choose Add custom connector.</li>
                 <li data-i18n="claudeStep2">Paste the address above and add it. Leave the advanced OAuth fields empty.</li>
-                <li data-i18n="claudeStep3">Adding a connector may need a browser rather than the phone app; once added it works in any chat.</li>
+                <li data-i18n="claudeStep3">This works on a free Claude account, which allows one custom connector. Adding it may need a browser rather than the phone app; once added it works in any chat.</li>
               </ol>
             </details>
             <details class="disclosure" id="chatgpt-guide">
@@ -240,7 +240,7 @@
               <ol class="workflow">
                 <li data-i18n="chatgptStep1">Paid plans: open Settings, then Security and login, and turn on Developer mode. Connectors then accept a custom server address.</li>
                 <li data-i18n="chatgptStep2">Add the address above as a custom connector and approve the sign-in.</li>
-                <li data-i18n="chatgptStep3">Free plans do not offer custom connectors. Use the Plans tab on this site, which needs no connector.</li>
+                <li data-i18n="chatgptStep3">Free plans do not offer custom connectors. A free Claude account does: add this address there instead, or paste a plan on the Plans tab.</li>
               </ol>
             </details>
 
@@ -258,7 +258,7 @@
           <details class="card automation-card advanced-access">
             <summary data-i18n="advancedAccess">Advanced: API access</summary>
             <h2 data-i18n="assistantAccess">Assistant access</h2>
-            <p class="muted" data-i18n="assistantHelp">For a custom GPT or your own scripts, create a revocable bearer key. Add it only to the tool's protected API-authentication field—never paste it into a chat. The full key is shown once. Claude cannot use a bearer key: connect it with the connector above.</p>
+            <p class="muted" data-i18n="assistantHelp">For your own scripts, create a revocable bearer key and send it only in the Authorization header—never paste it into a chat. The full key is shown once. Assistants do not use keys: connect them with the connector above.</p>
             <div class="inline-form">
               <input id="key-name" maxlength="80" data-i18n-placeholder="keyNamePlaceholder" aria-label="API key name" data-i18n-aria="apiKeyName">
               <button id="create-key" class="button primary" type="button" data-i18n="createKey">Create key</button>
