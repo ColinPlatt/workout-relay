@@ -134,7 +134,7 @@ def store(settings):
 
 def test_listing_shows_what_could_be_deleted(store):
     database, vault = store
-    user_id = seed_links(database, vault, [("a", "2026-10-01"), ("b", "2026-10-05")])
+    user_id = seed_links(database, vault, [("a", "2099-10-01"), ("b", "2099-10-05")])
     with database.session() as db:
         items = scheduled_workouts(db, user_id)
     assert [item["workout_id"] for item in items] == ["b", "a"]  # newest date first
@@ -143,7 +143,7 @@ def test_listing_shows_what_could_be_deleted(store):
 
 def test_an_id_we_do_not_track_is_refused(store):
     database, vault = store
-    user_id = seed_links(database, vault, [("a", "2026-10-01")])
+    user_id = seed_links(database, vault, [("a", "2099-10-01")])
     with database.session() as db:
         with pytest.raises(PlanRejected) as rejected:
             queue_deletion(db, database, user_id, ["a", "not-ours"])
@@ -153,7 +153,7 @@ def test_an_id_we_do_not_track_is_refused(store):
 
 def test_a_garmin_id_is_never_accepted_from_a_caller(store):
     database, vault = store
-    user_id = seed_links(database, vault, [("a", "2026-10-01")])
+    user_id = seed_links(database, vault, [("a", "2099-10-01")])
     with database.session() as db:
         # 1000 is the real Garmin workout id, deliberately not a valid handle.
         with pytest.raises(PlanRejected) as rejected:
@@ -163,7 +163,7 @@ def test_a_garmin_id_is_never_accepted_from_a_caller(store):
 
 def test_another_account_cannot_name_our_workout(store):
     database, vault = store
-    seed_links(database, vault, [("a", "2026-10-01")])
+    seed_links(database, vault, [("a", "2099-10-01")])
     with database.session() as db:
         stranger = User(email="stranger@example.com", password_hash="unused")
         db.add(stranger)
@@ -186,7 +186,7 @@ def test_a_past_session_is_refused_unless_asked_for(store):
 
 def test_an_empty_or_oversized_batch_is_refused(store):
     database, vault = store
-    user_id = seed_links(database, vault, [("a", "2026-10-01")])
+    user_id = seed_links(database, vault, [("a", "2099-10-01")])
     with database.session() as db:
         for ids, code in (([], "no_workouts_named"), (["a"] * 51, "too_many_workouts")):
             with pytest.raises(PlanRejected) as rejected:
@@ -216,7 +216,7 @@ async def test_deleting_removes_the_workout_and_every_row_that_tracked_it(worker
     vault = GarminTokens(
         TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes
     )
-    user_id = seed_links(database, vault, [("a", "2026-10-01")])
+    user_id = seed_links(database, vault, [("a", "2099-10-01")])
     with database.session() as db:
         db.add(
             WorkoutOperation(
@@ -253,7 +253,7 @@ async def test_deletion_keeps_tokens_refreshed_while_opening_garmin(worker_setti
     vault = GarminTokens(
         TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes
     )
-    user_id = seed_links(database, vault, [("a", "2026-10-01")])
+    user_id = seed_links(database, vault, [("a", "2099-10-01")])
     with database.session() as db:
         queue_deletion(db, database, user_id, ["a"])
         db.commit()
@@ -275,7 +275,7 @@ async def test_deletion_uses_newer_journal_identity(
     vault = GarminTokens(
         TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes
     )
-    user_id = seed_links(database, vault, [("a", "2026-10-01")])
+    user_id = seed_links(database, vault, [("a", "2099-10-01")])
     with database.session() as db:
         db.add(WorkoutOperation(
             user_id=user_id,
@@ -285,7 +285,7 @@ async def test_deletion_uses_newer_journal_identity(
                 "stage": "updated",
                 "workout_id": "999",
                 "schedule_id": journal_schedule,
-                "scheduled_date": "2026-10-03",
+                "scheduled_date": "2099-10-03",
             }),
         ))
         queue_deletion(db, database, user_id, ["a"])
@@ -305,7 +305,7 @@ async def test_a_workout_already_gone_in_garmin_counts_as_deleted(worker_setting
     vault = GarminTokens(
         TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes
     )
-    user_id = seed_links(database, vault, [("a", "2026-10-01")])
+    user_id = seed_links(database, vault, [("a", "2099-10-01")])
     with database.session() as db:
         submission_id = queue_deletion(db, database, user_id, ["a"]).submission_id
         db.commit()
@@ -323,7 +323,7 @@ async def test_an_unresolved_upload_blocks_deletion_instead_of_racing_it(worker_
     vault = GarminTokens(
         TokenVault(worker_settings.master_encryption_key), worker_settings.garmin_visit_minutes
     )
-    user_id = seed_links(database, vault, [("a", "2026-10-01")])
+    user_id = seed_links(database, vault, [("a", "2099-10-01")])
     with database.session() as db:
         db.add(
             WorkoutOperation(
@@ -467,7 +467,7 @@ def test_a_workout_sent_before_the_sport_was_recorded_still_lists(store):
     """Existing rows are not backfilled, so a null sport has to be normal
     rather than something the listing chokes on."""
     database, vault = store
-    user_id = seed_links(database, vault, [("old", "2026-10-01")])
+    user_id = seed_links(database, vault, [("old", "2099-10-01")])
     with database.session() as db:
         item = scheduled_workouts(db, user_id)[0]
     assert item["sport"] is None and item["workout_id"] == "old"
