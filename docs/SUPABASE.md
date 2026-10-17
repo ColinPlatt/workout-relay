@@ -1,8 +1,10 @@
 # Neon → Supabase database migration
 
-Status: prepared, not cut over. This moves the database only. The web host,
-`MASTER_ENCRYPTION_KEY` and every other setting stay as they are. Keep the Neon
-project intact until the checks at the end pass; it is the rollback.
+Status: done on 2026-10-17. Production (Northflank) uses the Supabase session
+pooler, and the Neon project has been deleted. The steps below remain as the
+procedure for any later move. This moves the database only. The web host,
+`MASTER_ENCRYPTION_KEY` and every other setting stay as they are. Keep the old
+database intact until the checks at the end pass; it is the rollback.
 
 **Do not rotate, regenerate or retype `MASTER_ENCRYPTION_KEY`.** Stored Garmin
 tokens are encrypted with it. The dump carries ciphertext only, so a different
@@ -37,8 +39,18 @@ Supabase Free limits that matter here:
   startup and worker queries help, but a week with no sign-ins or uploads may
   still count as low activity; watch for the warning email.
 - 500 MB of database space, and at most two active Free projects.
-- No downloadable backups on Free. Keep your own encrypted `pg_dump` if you
-  want a restorable copy.
+- No backups at all on Free: Supabase backs up Pro, Team and Enterprise
+  projects only, and there is no point-in-time restore. Keep your own
+  encrypted `pg_dump` if you want a restorable copy.
+
+**Accepted for now (2026-10-17): production has no backup.** Two users, a
+hobby project. Losing the database means signing up again, re-adding assistant
+connectors, and the relay forgetting the workouts it already sent: it could no
+longer edit or delete them, and resending the same workout IDs would create
+duplicates to remove by hand in Garmin Connect. Nothing in Garmin is lost.
+Revisit before adding users. Options: a weekly `pg_dump` cron on a home
+machine (which also counts as activity against the pause), or Pro for 7 days
+of backups and no pausing.
 
 ## 1. Project and hardening
 
