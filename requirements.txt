@@ -1,5 +1,6 @@
 anyio>=4.4,<4.8
 argon2-cffi>=23.1,<26
+certifi>=2026.10.19
 cryptography>=41,<51
 email-validator>=2,<3
 fastapi>=0.115,<0.116
