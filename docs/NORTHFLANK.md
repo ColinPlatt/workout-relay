@@ -1,8 +1,30 @@
-# Render → Northflank migration
+# Northflank deployment
 
-Status: prepared, not deployed. Keep Render available for rollback. This moves
-the application only; **keep the existing PostgreSQL database and encryption
-key**. No account/database export, new database, or key rotation is required.
+Production runs on Northflank as the combined service `workout-relay` in the
+`colinplatts-team` team, served at <https://relay.numerate.tech>.
+
+**Continuous delivery is on.** Every push to `main` is built from `/Dockerfile`
+and rolled out automatically; the build reports a
+`northflank/colinplatts-team/workout-relay/workout-relay` commit status and a
+GitHub deployment for the `workout-relay` environment. Northflank does not wait
+for GitHub Actions, so merge only CI-green revisions: what lands on `main` is
+what goes live. Docs-only commits also trigger a rebuild.
+
+To confirm a release, check the commit status or deployment on GitHub, then run
+the read-only smoke check from the repository's virtual environment:
+
+```bash
+python -m workout_relay.deployment_check https://relay.numerate.tech
+```
+
+The service does not report its revision, so the Northflank dashboard's running
+build is the only direct proof of which commit is live.
+
+The rest of this file records the Render → Northflank migration as it was
+performed. It moved the application only and kept the existing PostgreSQL
+database and encryption key.
+
+# Render → Northflank migration
 
 ## 1. Account and free-plan gate
 
@@ -30,7 +52,7 @@ existing database. Create a **Combined service** named `workout-relay`:
 | Compute | The included free Sandbox allocation; verify in the dashboard |
 | Public port | HTTP, internal port `8000`, name `web` |
 | Persistent volumes | None; application data stays in existing PostgreSQL |
-| Continuous delivery | Disable during migration; deploy an explicit tested revision |
+| Continuous delivery | Disabled during migration; now on for `main` (see above) |
 
 The dashboard creates a public HTTPS `code.run` hostname for the port. Set
 `BASE_URL` to that complete origin (or the custom domain you intend to retain).

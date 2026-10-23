@@ -121,6 +121,8 @@ Les clés API nécessitent également un accord explicite lors de leur création
 
 See [SECURITY.md](docs/SECURITY.md), [PLAN_FORMAT.md](docs/PLAN_FORMAT.md), and
 [DEPLOYMENT.md](docs/DEPLOYMENT.md) before enabling live Garmin authentication.
-The included `render.yaml` provides a phone-friendly Blueprint deployment on
-Render's free tier, with the database hosted separately; reviewing it does not
-provision or bill any resources.
+Production runs on Northflank and deploys automatically from `main`; see
+[NORTHFLANK.md](docs/NORTHFLANK.md). The included `render.yaml` is kept as a
+rollback path: a phone-friendly Blueprint deployment on Render's free tier,
+with the database hosted separately; reviewing it does not provision or bill
+any resources.

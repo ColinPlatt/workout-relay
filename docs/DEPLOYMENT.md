@@ -1,10 +1,9 @@
 # Deployment
 
-For the application-host migration with the existing database and encryption
-key preserved, follow [Render → Northflank](NORTHFLANK.md). To move the
-database from Neon to Supabase with the key preserved, follow
-[Neon → Supabase](SUPABASE.md). Preparation does not
-mean the new service is deployed; leave Render intact until cutover checks pass.
+Production runs on Northflank at <https://relay.numerate.tech> and deploys
+automatically on every push to `main`; see [Northflank](NORTHFLANK.md), which
+also records the Render → Northflank migration. To move the database from Neon
+to Supabase with the key preserved, follow [Neon → Supabase](SUPABASE.md).
 
 ## Development or private demonstration
 
