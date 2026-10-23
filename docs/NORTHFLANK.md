@@ -7,8 +7,15 @@ Production runs on Northflank as the combined service `workout-relay` in the
 and rolled out automatically; the build reports a
 `northflank/colinplatts-team/workout-relay/workout-relay` commit status and a
 GitHub deployment for the `workout-relay` environment. Northflank does not wait
-for GitHub Actions, so merge only CI-green revisions: what lands on `main` is
-what goes live. Docs-only commits also trigger a rebuild.
+for GitHub Actions, so `main` is protected instead: every change arrives by pull
+request, the CI `verify` check must pass on a branch that is up to date with
+`main`, and the rule applies to admins too, so direct pushes and force-pushes
+are rejected. What lands on `main` is exactly what CI tested and what goes
+live. Docs-only commits also trigger a rebuild.
+
+In an emergency, an admin can lift the admin rule with
+`gh api -X DELETE repos/ColinPlatt/workout-relay/branches/main/protection/enforce_admins`
+and restore it afterwards with `-X POST` on the same path.
 
 To confirm a release, check the commit status or deployment on GitHub, then run
 the read-only smoke check from the repository's virtual environment:
